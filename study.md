@@ -1,3 +1,41 @@
+### 主要特性
+  - 全进程工作模式
+    - 1 master & 多个worker
+    - 为什么module里会有init_thread这个函数指针???
+  - 全异步工作方式
+    - 通过epoll等异步方式进行操作, 非常高效. 
+    - 如果不小心掉用了阻塞操作，将会极大的影响nginx的性能.
+  
+### 配置
+  - 格式
+    > 命令行 + 参数(可以多个).  
+    > 每一个关键字都是一个命令, 如http/server/location都有对应的命令. 
+    > 可以自定义命令。  
+  - 继承结构
+    > 参见同目录下的图片.
+   
+### upstream
+  - 相关命令
+    - proxy_pass
+    - proxy_redirect
+    - proxy_store
+    - proxy_bind
+  - proxy_pass
+    - ngx_http_proxy_pass
+      > 读取配置信息，并改变ngx_http_core_module的处理函数. 
+    - ngx_http_proxy_handler
+      > ngx_http_upstream_create, 并设立upstream相关的回调函数.
+    - ngx_http_read_client_request_body
+      > 读取整个请求报文.
+      - 最后掉用ngx_http_upstream_init
+        - ngx_http_upstream_connect
+          - ngx_http_upstream_send_request
+            - ngx_http_upstream_process_header
+        
+    
+### nginx 内存池
+  - ngx_pool_t
+  
 ### 调用栈
   ```
   (gdb) bt
