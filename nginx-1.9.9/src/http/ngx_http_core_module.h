@@ -144,6 +144,10 @@ typedef ngx_int_t (*ngx_http_phase_handler_pt)(ngx_http_request_t *r,
 
 struct ngx_http_phase_handler_s {
     ngx_http_phase_handler_pt  checker;
+    /* 返回值非常关键: 
+       1.   如果返回NGX_DECLINED, 则继续进行下一个handler 
+       2.   如果返回NGX_OK, 则跳过当前phase，进行下一个phase
+     */
     ngx_http_handler_pt        handler;
     ngx_uint_t                 next;
 };

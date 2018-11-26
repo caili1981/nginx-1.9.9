@@ -122,7 +122,12 @@ typedef enum {
 
 
 struct ngx_connection_s {
-    void               *data;
+    void               *data;  
+    /*
+       1.  ngx_cycle 里用data作为next指针，连接一个free链表 
+       2.  在建立好http连接之后data指向ngx_http_connection_t.
+       3.  在wait request(ngx_http_create_request)之后，指向ngx_http_request_t
+     */
     ngx_event_t        *read;
     ngx_event_t        *write;
 

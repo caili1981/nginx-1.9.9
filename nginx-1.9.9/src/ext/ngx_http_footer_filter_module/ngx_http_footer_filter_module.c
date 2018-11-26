@@ -91,8 +91,8 @@ ngx_http_footer_header_filter(ngx_http_request_t *r)
     if (lcf->variable == (ngx_http_complex_value_t *) -1
         || r->header_only
         || r != r->main
-        || r->headers_out.status == NGX_HTTP_NO_CONTENT
-        || ngx_http_test_content_type(r, &lcf->types) == NULL)
+        || r->headers_out.status == NGX_HTTP_NO_CONTENT) 
+       // || ngx_http_test_content_type(r, &lcf->types) == NULL)
     {
         return ngx_http_next_header_filter(r);
     }
@@ -184,7 +184,6 @@ ngx_http_footer_filter(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                    *value;
     ngx_http_complex_value_t    **cv;
 
-    MY_DEBUG;
     cv = &((ngx_http_footer_loc_conf_t *) conf)->variable;
 
     if (*cv != NULL) {
@@ -209,7 +208,6 @@ ngx_http_footer_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_footer_loc_conf_t  *conf;
 
-    MY_DEBUG;
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_footer_loc_conf_t));
     if (conf == NULL) {
         return NULL;
@@ -225,9 +223,8 @@ ngx_http_footer_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_footer_loc_conf_t  *prev = parent;
     ngx_http_footer_loc_conf_t  *conf = child;
 
-    MY_DEBUG;
     if (ngx_http_merge_types(cf, &conf->types_keys, &conf->types,
-                             &prev->types_keys,&prev->types,
+                             &prev->types_keys, &prev->types,
                              ngx_http_html_default_types)
         != NGX_OK)
     {
@@ -245,11 +242,9 @@ ngx_http_footer_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
-
 static ngx_int_t
 ngx_http_footer_filter_init(ngx_conf_t *cf)
 {
-    MY_DEBUG;
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_footer_body_filter;
 

@@ -1143,7 +1143,12 @@ inclusive:
     return node;
 }
 
-
+/* 
+ * 和ngx_http_add_listening的区别是: 
+ * 1. listen, 只是加到待监听队列.
+ * 2. open_listening, 创建套接字.
+ * 3. configure_listening, 配置套接字并开始监听. 
+ */
 ngx_int_t
 ngx_http_add_listen(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     ngx_http_listen_opt_t *lsopt)
