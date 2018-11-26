@@ -17,8 +17,26 @@
     > 每一个关键字都是一个命令, 如http/server/location都有对应的命令. 
     > 可以自定义命令。  
   - 继承结构
-    > 参见同目录下的图片.
-   
+    > 参见《深入理解nginx》第10章.
+    
+### HTTP 处理
+  - 快速索引
+    - server
+      > 通配hash算法
+    - location
+      > 平衡二叉树.
+  - http请求处理的11个阶段
+    - 定义在ngx_http_core_main_conf_t里. 
+    - 在http_module ctx定义的post 函数里，可以添加自己的处理函数.
+      ```
+      ngx_http_handler_pt *h;
+      ngx_http_core_main_conf_t *cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+      h = ngx_array_push(&cmcf->phases[NGX_HTTP_POST_READ_PHASE].handlers);
+      if (h == NULL) {
+          return NGX_ERROR;
+      }
+      *h = ngx_http_hello_world_post_read_phase_handler;
+      ```
 ### upstream
   - 相关命令
     - proxy_pass
@@ -38,24 +56,32 @@
             - ngx_http_upstream_process_header
         
     
-### nginx 内存池
-  - ngx_pool_t
-  - 将多次的malloc汇聚成一次大片的malloc
-    - 优点
-      - 从而减少malloc的次数，
-      - 减少内存碎片，提高整体性能.
-      - 避免内存泄漏. 
-    - 缺点
-      - 内存浪费，是一种以空间换时间的做法.
-    - 适用范围
-      - 在一个生命周期内，如处理一个http请求时，中间会有多次内存的申请的情况, 能极大提升效率.
-      - 如果在生命周期内，可以提前释放的部分，最好不用memory pool的方式. 
-      - 不定长度的申请，能极大程度的减少内存碎片.
-      - 非常适用于容易产生内存泄漏的地方. 
-  - 和objcache比较.
-    - objcache比较适用于定长的申请和释放, memory pool适用于不定长的申请.
-    - memory pool更使用于一个生命周期(如session)内都存在的内存段, objcache更适用于短期使用的. 
-  
+### 数据结构
+  - nginx hash
+    - 支持前/后通配符匹配. 实际上是查找三次.   
+      - 精确匹配  
+      - 前通配符匹配.
+      - 后通配符匹配.
+    - server的查找使用的是这种方式.
+      
+  - nginx 内存池
+    - ngx_pool_t
+    - 将多次的malloc汇聚成一次大片的malloc
+      - 优点
+        - 从而减少malloc的次数，
+        - 减少内存碎片，提高整体性能.
+        - 避免内存泄漏. 
+      - 缺点
+        - 内存浪费，是一种以空间换时间的做法.
+      - 适用范围
+        - 在一个生命周期内，如处理一个http请求时，中间会有多次内存的申请的情况, 能极大提升效率.
+        - 如果在生命周期内，可以提前释放的部分，最好不用memory pool的方式. 
+        - 不定长度的申请，能极大程度的减少内存碎片.
+        - 非常适用于容易产生内存泄漏的地方. 
+    - 和objcache比较.
+      - objcache比较适用于定长的申请和释放, memory pool适用于不定长的申请.
+      - memory pool更使用于一个生命周期(如session)内都存在的内存段, objcache更适用于短期使用的. 
+
 ### 调用栈
   ```
   (gdb) bt
