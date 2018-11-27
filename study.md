@@ -126,7 +126,43 @@
     - 和objcache比较.
       - objcache比较适用于定长的申请和释放, memory pool适用于不定长的申请.
       - memory pool更使用于一个生命周期(如session)内都存在的内存段, objcache更适用于短期使用的. 
-
+      
+### nginx phase handler
+  ```
+  (gdb) p *ph
+  $23 = {checker = 0x42a51c <ngx_http_core_generic_phase>, handler = 0x46d069   <ngx_http_hello_world_post_read_phase_handler>, next = 1}
+  (gdb) p ph[0].checker
+  $24 = (ngx_http_phase_handler_pt) 0x42a51c <ngx_http_core_generic_phase>
+  (gdb) p ph[1].checker
+  $25 = (ngx_http_phase_handler_pt) 0x42a584 <ngx_http_core_rewrite_phase>
+  (gdb) p ph[1]
+  $26 = {checker = 0x42a584 <ngx_http_core_rewrite_phase>, handler = 0x45a6f3 <ngx_http_rewrite_handler>, next = 2}
+  (gdb) p ph[2]
+  $27 = {checker = 0x42aa0f <ngx_http_core_find_config_phase>, handler = 0x0, next = 0}
+  (gdb) p ph[3]
+  $28 = {checker = 0x42a584 <ngx_http_core_rewrite_phase>, handler = 0x45a6f3 <ngx_http_rewrite_handler>, next = 4}
+  (gdb) p ph[4]
+  $29 = {checker = 0x42a5bf <ngx_http_core_post_rewrite_phase>, handler = 0x0, next = 2}
+  (gdb) p ph[5]
+  $30 = {checker = 0x42a51c <ngx_http_core_generic_phase>, handler = 0x455f85 <ngx_http_limit_req_handler>, next = 7}
+  (gdb) p ph[6]
+  $31 = {checker = 0x42a51c <ngx_http_core_generic_phase>, handler = 0x4554ac <ngx_http_limit_conn_handler>, next = 7}
+  (gdb) p ph[7]
+  $32 = {checker = 0x42a676 <ngx_http_core_access_phase>, handler = 0x454aa9 <ngx_http_access_handler>, next = 10}
+  (gdb) p ph[8]
+  $33 = {checker = 0x42a676 <ngx_http_core_access_phase>, handler = 0x4544d8 <ngx_http_auth_basic_handler>, next = 10}
+  (gdb) p ph[9]
+  $34 = {checker = 0x42a77c <ngx_http_core_post_access_phase>, handler = 0x0, next = 10}
+  (gdb) p ph[10]
+  $35 = {checker = 0x42b488 <ngx_http_core_content_phase>, handler = 0x445275 <ngx_http_index_handler>, next = 13}
+  (gdb) p ph[11]
+  $36 = {checker = 0x42b488 <ngx_http_core_content_phase>, handler = 0x452fd8 <ngx_http_autoindex_handler>, next = 13}
+  (gdb) p ph[12]
+  $37 = {checker = 0x42b488 <ngx_http_core_content_phase>, handler = 0x444a5a <ngx_http_static_handler>, next = 13}
+  (gdb) p ph[13]
+  $38 = {checker = 0x0, handler = 0x50000002, next = 0}
+  (gdb)
+  ```
 ### 调用栈
   ```
   (gdb) bt
