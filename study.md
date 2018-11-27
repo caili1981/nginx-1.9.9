@@ -19,6 +19,38 @@
   - 继承结构
     > 参见《深入理解nginx》第10章.
     
+### nginx启动/处理流程
+  - 读配置.
+  - 建立监听端口.
+    - ngx_http_add_listening
+      - 设置handler处理函数 ngx_http_init_connection
+    - ngx_open_listening_sockets
+      - create & bind socket
+    - ngx_configure_listening_sockets
+      - 设置接收/发送buffer的大小.
+      - 设置keepalive
+      - listen socket
+    - 启动子进程
+      - ngx_epoll_add_event
+        > 将accept事件挂载到事件列表中.
+    - ngx_process_events_and_timers
+      - ngx_epoll_process_events
+        - ngx_event_accept
+          - ngx_http_init_connection
+            > 初始化连接，并设置read event的handler是 ngx_http_wait_request_handler
+        - 
+            
+    
+    
+### nginx事件
+  - nginx 是事件驱动型设计，无阻塞模型.
+  - 容器式编程(类似于面向对象的继承), 支持:
+    - epoll
+      - ngx_connect_t 里包含read和write事件队列
+    - poll
+    - select
+
+    
 ### HTTP 处理
   - 快速索引
     - server
