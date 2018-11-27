@@ -38,7 +38,19 @@
         - ngx_event_accept
           - ngx_http_init_connection
             > 初始化连接，并设置read event的handler是 ngx_http_wait_request_handler
-        - 
+        - read事件
+          - ngx_http_wait_request_handler
+            - 创建ngx_http_request_t.
+            - 将read event的handler设置为ngx_http_process_request_line.
+            - ngx_http_process_request_line.
+              - ngx_http_parse_request_line
+                > 将read event设置为 ngx_http_process_request_headers
+                - ngx_http_process_request_headers
+                  - ngx_http_process_request
+                    - ngx_http_handler
+                      - ngx_http_core_run_phases
+                        - ngx_http_core_content_phase
+
             
     
     
@@ -86,6 +98,7 @@
         - ngx_http_upstream_connect
           - ngx_http_upstream_send_request
             - ngx_http_upstream_process_header
+
         
     
 ### 数据结构
