@@ -171,6 +171,7 @@ typedef struct {
 
 
 typedef struct {
+    /* 整个headers的链表, 后续的（如:host)都是这个链表的成员 */
     ngx_list_t                        headers;
 
     ngx_table_elt_t                  *host;
@@ -181,6 +182,10 @@ typedef struct {
     ngx_table_elt_t                  *if_none_match;
     ngx_table_elt_t                  *user_agent;
     ngx_table_elt_t                  *referer;
+    /* 
+       content_length 指的是未经处理的字符串, 
+       content_length_n 指的是经过处理的整数
+      */
     ngx_table_elt_t                  *content_length;
     ngx_table_elt_t                  *content_type;
 
@@ -357,17 +362,25 @@ struct ngx_http_posted_request_s {
 typedef ngx_int_t (*ngx_http_handler_pt)(ngx_http_request_t *r);
 typedef void (*ngx_http_event_handler_pt)(ngx_http_request_t *r);
 
-
+/* 重要！！！ngx_http_request_t 是整个http处理的核心数据结构 */
 struct ngx_http_request_s {
     uint32_t                          signature;         /* "HTTP" */
 
+    /*
+     * ngx服务器的一个tcp连接, 在ngx_connection_t 内部区分是
+     * http还是其他连接
+     */
     ngx_connection_t                 *connection;
 
+    /* 保存每个模块的临时参数/变量, 这个变量只在此http request的生命周期内有效 */
     void                            **ctx;
+
+    /* 从loc继承下来的静态配置 */
     void                            **main_conf;
     void                            **srv_conf;
     void                            **loc_conf;
 
+    /* 用来恢复当下的处理流程, 供事件处理模块使用 */
     ngx_http_event_handler_pt         read_event_handler;
     ngx_http_event_handler_pt         write_event_handler;
 
@@ -375,42 +388,76 @@ struct ngx_http_request_s {
     ngx_http_cache_t                 *cache;
 #endif
 
+    /* 由upstream相关模块创建, 并设立upstream 内响应的各个阶段的handler/filter */
     ngx_http_upstream_t              *upstream;
     ngx_array_t                      *upstream_states;
                                          /* of ngx_http_upstream_state_t */
 
+    /*
+     * memory pool, ngx_http_create_request里进行创建,
+     * 这个pool用于这个request的生命周期 
+     */
     ngx_pool_t                       *pool;
+
+    /* 
+     * header_in: 未经处理过的原始报文头
+     * headers_in: 经过处理后的报文头，每一个首部都已经解析出来
+     */
+
     ngx_buf_t                        *header_in;
 
+    /* 保存很多 HTTP 首部信息， 例如content lenght, if modified since 等等*/
     ngx_http_headers_in_t             headers_in;
     ngx_http_headers_out_t            headers_out;
 
+    /* ????为什么在http_core_handler时，它的值为0 */
     ngx_http_request_body_t          *request_body;
 
     time_t                            lingering_time;
     time_t                            start_sec;
     ngx_msec_t                        start_msec;
 
+    /* NGX_HTTP_GET/NGX_HTTP_HEAD ...*/
     ngx_uint_t                        method;
+    /* NGX_HTTP_VERSION_9/NGX_HTTP_VERSION_10/NGX_HTTP_VERSION_11/NGX_HTTP_VERSION_20 */
     ngx_uint_t                        http_version;
 
+    /* GET .../PUT ..  /index.html HTTP1.1 */
     ngx_str_t                         request_line;
+    /* /index.html HTTP1.1*/
     ngx_str_t                         uri;
+
+    /* ???? */
     ngx_str_t                         args;
+
+    /* ??? */
     ngx_str_t                         exten;
     ngx_str_t                         unparsed_uri;
 
+    /* PUT /hello_world HTTP/1.1\r\nHost */
     ngx_str_t                         method_name;
+
+    /* HTTP/1.1\r\nHost */
     ngx_str_t                         http_protocol;
 
+    /* output buffer, 为什么没有last字段？？这样的后果是在前面添加性能比较好 */
     ngx_chain_t                      *out;
+
+    /* 主请求, 通过这个域能判断当前request是不是主请求 */
     ngx_http_request_t               *main;
+    /* 当前request的父request？？？*/
     ngx_http_request_t               *parent;
     ngx_http_postponed_request_t     *postponed;
     ngx_http_post_subrequest_t       *post_subrequest;
     ngx_http_posted_request_t        *posted_requests;
 
+    /* 当前ngx_http_handler时会进入phases engine, phase_handler表明当前处于哪一个phase */
     ngx_int_t                         phase_handler;
+
+    /* 
+     * 从ngx_http_core_conf_t->handler获得，可以在自己的模块重置,
+     * 如：ngx_http_proxy_module 就把 ngx_http_proxy_handler替换默认的handler
+     */
     ngx_http_handler_pt               content_handler;
     ngx_uint_t                        access_code;
 
@@ -432,6 +479,7 @@ struct ngx_http_request_s {
 
     ngx_uint_t                        err_status;
 
+    /* ngx_http_create_request 里进行创建 */
     ngx_http_connection_t            *http_connection;
 #if (NGX_HTTP_V2)
     ngx_http_v2_stream_t             *stream;
@@ -544,6 +592,7 @@ struct ngx_http_request_s {
 
     ngx_uint_t                        state;
 
+    /* 根据http报文头算出的hash值, proxy 模块用它来寻找handler */
     ngx_uint_t                        header_hash;
     ngx_uint_t                        lowcase_index;
     u_char                            lowcase_header[NGX_HTTP_LC_HEADER_LEN];
@@ -558,6 +607,10 @@ struct ngx_http_request_s {
      * via ngx_http_ephemeral_t
      */
 
+    /* 
+     * uri_start 和 uri_end 用来表示uri的位置, 
+     * 这个值和uri指向的buf一致, 是pool创建出来的.
+     */
     u_char                           *uri_start;
     u_char                           *uri_end;
     u_char                           *uri_ext;

@@ -436,7 +436,9 @@ ngx_conf_bitmask_t  ngx_http_upstream_ignore_headers_masks[] = {
     { ngx_null_string, 0 }
 };
 
-
+/*
+ * 创建upstream, 详细实例可以参见ngx_http_proxy_module
+ */
 ngx_int_t
 ngx_http_upstream_create(ngx_http_request_t *r)
 {
@@ -576,7 +578,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         u->request_bufs = r->request_body->bufs;
     }
 
-    if (u->create_request(r) != NGX_OK) {
+    /* 调用upstream 创建者的 create handler */
+    if (u->create_request(r) != NGX_OK) {   
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
@@ -585,6 +588,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
+    /* 设置output 的 buffer */
     u->output.alignment = clcf->directio_alignment;
     u->output.pool = r->pool;
     u->output.bufs.num = 1;
@@ -738,6 +742,7 @@ found:
     u->ssl_name = uscf->host;
 #endif
 
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "init peer connection: %s\n", __FUNCTION__);
     if (uscf->peer.init(r, uscf) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -5411,6 +5416,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 2; i < cf->args->nelts; i++) {
 
+        /* 解析权重 */
         if (ngx_strncmp(value[i].data, "weight=", 7) == 0) {
 
             if (!(uscf->flags & NGX_HTTP_UPSTREAM_WEIGHT)) {
@@ -5524,6 +5530,10 @@ not_supported:
 }
 
 
+/*
+ *  检查是否存在upstream, 如果存在则返回与url对应的upstream, 
+ *  否则，则创建一个新的.
+ */
 ngx_http_upstream_srv_conf_t *
 ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
 {
@@ -5550,6 +5560,7 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
 
     for (i = 0; i < umcf->upstreams.nelts; i++) {
 
+        /* 检查是否有相同的upstream 名字 */
         if (uscfp[i]->host.len != u->host.len
             || ngx_strncasecmp(uscfp[i]->host.data, u->host.data, u->host.len)
                != 0)
@@ -5557,6 +5568,7 @@ ngx_http_upstream_add(ngx_conf_t *cf, ngx_url_t *u, ngx_uint_t flags)
             continue;
         }
 
+        /* 若相等 */
         if ((flags & NGX_HTTP_UPSTREAM_CREATE)
              && (uscfp[i]->flags & NGX_HTTP_UPSTREAM_CREATE))
         {

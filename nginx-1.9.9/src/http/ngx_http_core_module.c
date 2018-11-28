@@ -1359,6 +1359,12 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_str_t  path;
 
     if (r->content_handler) {
+        /*
+         * 正常情况下，如果没有定义自己的处理函数，
+         * 则content_handler为空, 它会进入content phase handler,
+         * 而如果重写了content handler, 则不会进入, 因为content_handler
+         * 和phase_handler只有一个能生效. 前者会覆盖后者.
+         */
         r->write_event_handler = ngx_http_request_empty_handler;
         ngx_http_finalize_request(r, r->content_handler(r));
         return NGX_OK;
@@ -1367,6 +1373,11 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "content phase: %ui", r->phase_handler);
 
+    /*
+     * 如果没有定义content_handler, ph->handler可为ngx_http_static_handler
+     * 从而进入静态页面的处理函数. 这个函数会调用
+     * ngx_http_send_header/ngx_http_output_filter
+     */
     rc = ph->handler(r);
 
     if (rc != NGX_DECLINED) {

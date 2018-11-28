@@ -121,6 +121,29 @@ ngx_http_hello_world_post_read_phase_handler(ngx_http_request_t *r)
 }
 
 static ngx_int_t
+ngx_http_hello_world_content_phase_handler(ngx_http_request_t *r)
+{
+    ngx_chain_t *out;
+    ngx_buf_t *b;
+    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "go to content phase\n");
+
+    b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
+    out = ngx_pcalloc(r->pool, sizeof(ngx_chain_t));
+    if (!b) {
+        return NGX_ERROR;
+    }
+    b->pos = (u_char *)"\nAdded by content phase handler\n";
+    b->last = b->pos + sizeof("\nAdded by content phase handler\n") - 1;
+    out->buf = b;
+    out->next = r->out;
+    b->memory = 1;
+    b->last_buf = 0;
+    r->out = out;
+
+    return NGX_DECLINED;
+}
+
+static ngx_int_t
 ngx_http_hello_world_post_conf(ngx_conf_t *cf)
 {
     ngx_http_handler_pt *h;
@@ -130,6 +153,12 @@ ngx_http_hello_world_post_conf(ngx_conf_t *cf)
         return NGX_ERROR;
     }
     *h = ngx_http_hello_world_post_read_phase_handler;
+
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
+    if (h == NULL) {
+        return NGX_ERROR;
+    }
+    *h = ngx_http_hello_world_content_phase_handler;
     return NGX_OK;
 }
 

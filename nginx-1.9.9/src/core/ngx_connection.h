@@ -122,11 +122,19 @@ typedef enum {
 
 
 struct ngx_connection_s {
-    void               *data;  
     /*
        1.  ngx_cycle 里用data作为next指针，连接一个free链表 
        2.  在建立好http连接之后data指向ngx_http_connection_t.
        3.  在wait request(ngx_http_create_request)之后，指向ngx_http_request_t
+     */
+    void               *data;  
+
+    /*
+     * read/event event的handler在发现ngx_http_process_request之后，
+     * 就变成了ngx_http_request_handler,
+     * 例如在ngx_http_read_client_request_body 之后，如果发现recv无法获取信息，则
+     * 将read event加入到监听队列中，它的handler就写ngx_http_request_handler,
+     * 而ngx_http_request_handler会再次调用响应的read函数read_event_handler
      */
     ngx_event_t        *read;
     ngx_event_t        *write;

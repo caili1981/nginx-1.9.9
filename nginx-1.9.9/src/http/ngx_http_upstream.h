@@ -298,8 +298,10 @@ struct ngx_http_upstream_s {
     ngx_http_upstream_handler_pt     read_event_handler;
     ngx_http_upstream_handler_pt     write_event_handler;
 
+    /* upstream 向上游服务器发起的连接 */
     ngx_peer_connection_t            peer;
 
+    /* 如果到上游服务器的速度远大于下游客户端，设置buffer = 1, 创建pipe */
     ngx_event_pipe_t                *pipe;
 
     ngx_chain_t                     *request_bufs;
@@ -307,6 +309,7 @@ struct ngx_http_upstream_s {
     ngx_output_chain_ctx_t           output;
     ngx_chain_writer_ctx_t           writer;
 
+    /* upstream 的配置, 在proxy module里， 这是直接从proxy的配置里获得的 */
     ngx_http_upstream_conf_t        *conf;
 #if (NGX_HTTP_CACHE)
     ngx_array_t                     *caches;
@@ -325,13 +328,17 @@ struct ngx_http_upstream_s {
     ngx_chain_t                     *busy_bufs;
     ngx_chain_t                     *free_bufs;
 
+    /* 处理包体前的初始化方法 */
     ngx_int_t                      (*input_filter_init)(void *data);
+    /* 处理包体的方法 */
     ngx_int_t                      (*input_filter)(void *data, ssize_t bytes);
     void                            *input_filter_ctx;
 
 #if (NGX_HTTP_CACHE)
     ngx_int_t                      (*create_key)(ngx_http_request_t *r);
 #endif
+    /* 这是最重要的几个回调函数, 在proxy module里就实现了这个 */
+    /* upstream 的内容是不变的，所有不需要处理body, 如果需要修改body，就应该用sub request ????? */
     ngx_int_t                      (*create_request)(ngx_http_request_t *r);
     ngx_int_t                      (*reinit_request)(ngx_http_request_t *r);
     ngx_int_t                      (*process_header)(ngx_http_request_t *r);

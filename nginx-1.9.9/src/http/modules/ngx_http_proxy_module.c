@@ -37,6 +37,7 @@ struct ngx_http_proxy_rewrite_s {
 
 typedef struct {
     ngx_str_t                      key_start;
+    /* http:// or https:// */
     ngx_str_t                      schema;
     ngx_str_t                      host_header;
     ngx_str_t                      port;
@@ -871,7 +872,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     u->create_key = ngx_http_proxy_create_key;
 #endif
 
-    u->create_request = ngx_http_proxy_create_request;
+    u->create_request = ngx_http_proxy_create_request; 
     u->reinit_request = ngx_http_proxy_reinit_request;
     u->process_header = ngx_http_proxy_process_status_line;
     u->abort_request = ngx_http_proxy_abort_request;
@@ -910,6 +911,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
         r->request_body_no_buffering = 1;
     }
 
+    /* 读完request body 进入 upstream init函数 */
     rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
@@ -1146,6 +1148,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     u = r->upstream;
 
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "upstream create request: %s\n", __FUNCTION__);
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
 #if (NGX_HTTP_CACHE)
@@ -1487,6 +1491,9 @@ ngx_http_proxy_reinit_request(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "upstream reinit request: %s", __FUNCTION__);
+
     ctx->status.code = 0;
     ctx->status.count = 0;
     ctx->status.start = NULL;
@@ -1682,6 +1689,9 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     if (ctx == NULL) {
         return NGX_ERROR;
     }
+
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "upstream process status line: %s\n", __FUNCTION__);
 
     u = r->upstream;
 
@@ -1911,6 +1921,10 @@ ngx_http_proxy_input_filter_init(void *data)
     u = r->upstream;
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "proxy input filter: %s\n%s\n", 
+                  __FUNCTION__, data);
+
     if (ctx == NULL) {
         return NGX_ERROR;
     }
@@ -1970,6 +1984,10 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     if (buf->pos == buf->last) {
         return NGX_OK;
     }
+
+    ngx_log_error(NGX_LOG_ERR, p->upstream->log, 0,
+                  "proxy copy filter: %s\n%s\n", 
+                  __FUNCTION__, buf->start);
 
     cl = ngx_chain_get_free_buf(p->pool, &p->free);
     if (cl == NULL) {
@@ -2155,6 +2173,10 @@ ngx_http_proxy_non_buffered_copy_filter(void *data, ssize_t bytes)
     ngx_buf_t            *b;
     ngx_chain_t          *cl, **ll;
     ngx_http_upstream_t  *u;
+
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "proxy non buffered copy filter: %s\n%s\n", 
+                  __FUNCTION__, data);
 
     u = r->upstream;
 
@@ -3610,7 +3632,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_url_t                   u;
     ngx_uint_t                  n;
     ngx_http_core_loc_conf_t   *clcf;
-    ngx_http_script_compile_t   sc;
+    ngx_http_script_compile_t   sc;   /* 用于处理 $ 等脚本 */
 
     if (plcf->upstream.upstream || plcf->proxy_lengths) {
         return "is duplicate";
@@ -3618,6 +3640,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
+    /* 替换http核心处理函数 */
     clcf->handler = ngx_http_proxy_handler;
 
     if (clcf->name.data[clcf->name.len - 1] == '/') {
@@ -3631,6 +3654,7 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     n = ngx_http_script_variables_count(url);
 
     if (n) {
+        /* 如果含有'$'等变量 */
 
         ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 

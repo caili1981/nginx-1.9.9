@@ -15,9 +15,9 @@
 
 
 typedef struct {
-    void        **main_conf;
-    void        **srv_conf;
-    void        **loc_conf;
+    void        **main_conf;   /* 指的是http级别 */
+    void        **srv_conf;    /* 指的的http之下的级别，如svr/upstream 等都服用这个指针 */
+    void        **loc_conf;    /* loc 级别 */
 } ngx_http_conf_ctx_t;
 
 

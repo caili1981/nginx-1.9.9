@@ -1,5 +1,5 @@
 #!/bin/sh
 nginx -s quit
-#./configure --add-module=./src/ext/ngx_http_footer_filter_module --add-module=./src/ext/ngx_http_hello_world_module 
+./configure --add-module=./src/ext/ngx_http_footer_filter_module --add-module=./src/ext/ngx_http_hello_world_module 
 make && make install
 nginx 
