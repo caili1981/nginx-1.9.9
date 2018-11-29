@@ -1,3 +1,5 @@
+### 待学习
+  - upstream
 ### 主要特性
   - 与apache相比
     > apache一个进程处理一个连接. 每个进程不停的停止，以等待所需资源得到满足.
@@ -50,10 +52,50 @@
                     - ngx_http_handler
                       - ngx_http_core_run_phases
                         - ngx_http_core_content_phase
+         
+### nginx filter模块
+  - filter类型
+    - header_filter
+      - header/body_filter的顺序是和ngx_modules里注册顺序相反的.
+      - ngx_http_top_header_filter(ngx_http_send_header函数内调用)
+      - ngx_http_not_modified_header_filter
+      - ngx_http_headers_filter 
+        > 注意后面有一个header_filter
+      - ngx_http_userid_filter
+      - ngx_http_charset_header_filter
+      - ngx_http_ssi_header_filter
+      - ngx_http_gzip_header_filter
+      - ngx_http_range_header_filter
+      - ngx_http_chunked_header_filter
+      - ngx_http_header_filter
+        > 注意前面有一个ngx_http_headers_filter
+    - body_filter
+      - ngx_http_top_body_filter (ngx_http_output_filter函数内调用)
+      - ngx_http_range_body_filter
+      - ngx_http_copy_filter
+      - ngx_http_charset_body_filter
+      - ngx_http_ssi_body_filter
+      - ngx_http_postpone_filter
+      - ngx_http_gzip_body_filter
+      - ngx_http_chunked_body_filter
+      - ngx_http_write_filter
 
-            
-    
-    
+### upstream 处理流程
+  - ngx_http_proxy_handler
+    - ngx_http_upstream_create
+    - ngx_http_read_client_request_body
+      - ngx_http_upstream_init.    ====> upstream的启动函数, 进入它之后，所有的后续流程都将自动化进行，用户模块可以无需关心.
+        - ngx_http_upstream_init_request
+          - ngx_http_upstream_connect
+            - ngx_http_upstream_send_request
+              - ngx_http_upstream_send_request_body
+              - ngx_http_upstream_process_header
+                - ngx_http_upstream_process_body_in_memory
+  - 从上述代码中可以看出，upstream设计的就是一层套一层的流水线模式. 初始化报文头, 发送报文，处理报文头，处理报文体. 
+  - 每一级函数都可以被socket中断. 当socket的条件得以满足时会继续后续流程. 
+  
+### subrequest 处理流程.
+
 ### nginx事件
   - nginx 是事件驱动型设计，无阻塞模型.
   - 容器式编程(类似于面向对象的继承), 支持:
@@ -61,6 +103,10 @@
       - ngx_connect_t 里包含read和write事件队列
     - poll
     - select
+  - nginx在如何将http的流程接上，费了很大的功夫，相关的代码也晦涩难懂.
+    - r->connection->read/write->handler会指定当前状态的回调函数，从这个函数进去之后，会继续一个http的后续流程. 
+      > 例如ngx_http_request_handler 函数. 
+    
 
     
 ### HTTP 处理
