@@ -1,5 +1,14 @@
 ### 待学习
   - upstream
+  - subrequest
+  - cookie
+  - SSI是什么.
+  - SSL是如何支持的.
+  - gzip模块.
+  - chunk模块.
+  - 能否撰写流模式的反病毒引擎？是否有开源的反病毒程序？
+  
+
 ### 主要特性
   - 与apache相比
     > apache一个进程处理一个连接. 每个进程不停的停止，以等待所需资源得到满足.
@@ -174,6 +183,36 @@
       - memory pool更使用于一个生命周期(如session)内都存在的内存段, objcache更适用于短期使用的. 
       
 ### nginx phase handler
+  - phase handler定义了处理报文的几个步骤
+  - ngx_http_handler
+    - ngx_http_core_generic_phase 0
+      - 默认没有挂载
+    - ngx_http_core_rewrite_phase 1 
+      - ngx_http_rewrite_handler
+    - ngx_http_core_find_config_phase 2
+    - ngx_http_core_rewrite_phase 3 
+      - ngx_http_rewrite_handler
+    - ngx_http_core_post_rewrite_phase 4 
+    - ngx_http_core_generic_phase 5
+      - ngx_http_limit_req_handler
+    - ngx_http_core_generic_phase 6 
+      - ngx_http_limit_conn_handler 
+    - ngx_http_core_access_phase 7
+      - ngx_http_access_handler
+    - ngx_http_core_access_phase 8
+      - ngx_http_auth_basic_handler
+    - ngx_http_core_post_access_phase 9
+      - 暂时没有挂载
+    - ngx_http_core_content_phase 10 
+      > 如果r->content_handler, 则不会调用后续的phase handler. 这意味着content_handler & phase_handler只有一个能生效. 
+      - ngx_http_index_handler
+    - ngx_http_core_content_phase 11
+      - ngx_http_autoindex_handler
+    - ngx_http_autoindex_handler 12
+      - ngx_http_static_handler
+        - ngx_http_send_header
+        - ngx_http_output_filter
+    
   ```
   (gdb) p *ph
   $23 = {checker = 0x42a51c <ngx_http_core_generic_phase>, handler = 0x46d069   <ngx_http_hello_world_post_read_phase_handler>, next = 1}
