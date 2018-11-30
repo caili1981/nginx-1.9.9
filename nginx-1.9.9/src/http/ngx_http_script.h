@@ -104,7 +104,6 @@ typedef struct {
     uintptr_t                   data;
 } ngx_http_script_var_handler_code_t;
 
-
 typedef struct {
     ngx_http_script_code_pt     code;
     uintptr_t                   n;
@@ -194,7 +193,10 @@ typedef struct {
     ngx_array_t                *lengths;
 } ngx_http_script_complex_value_code_t;
 
-
+/*
+ * 每一段脚本的代码格式定义:
+ * 函数指针+value+text_len+text_data
+ */
 typedef struct {
     ngx_http_script_code_pt     code;
     uintptr_t                   value;

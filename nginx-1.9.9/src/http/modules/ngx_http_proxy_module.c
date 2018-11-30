@@ -1148,7 +1148,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     u = r->upstream;
 
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                   "upstream create request: %s\n", __FUNCTION__);
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
@@ -1202,7 +1202,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         }
 
         uri_len = ctx->vars.uri.len + r->uri.len - loc_len + escape
-                  + sizeof("?") - 1 + r->args.len;
+                  + sizeof("?") - 1 + r->args.len;  /* 设置冲定向之后的uri */
     }
 
     if (uri_len == 0) {
@@ -1215,6 +1215,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
 
+    /* ??? nginx 变量 ??? */
     ngx_http_script_flush_no_cacheable_variables(r, plcf->body_flushes);
     ngx_http_script_flush_no_cacheable_variables(r, headers->flushes);
 
@@ -1257,6 +1258,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         part = &r->headers_in.headers.part;
         header = part->elts;
 
+        /* 
+         * 查找预定义的header, 如果不在预定义里，则添加
+         */
         for (i = 0; /* void */; i++) {
 
             if (i >= part->nelts) {
@@ -1295,8 +1299,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
 
     /* the request line */
-
-    b->last = ngx_copy(b->last, method.data, method.len);
+    /* 拷贝get/head 等method + ' ' + url */
+    b->last = ngx_copy(b->last, method.data, method.len);   
     *b->last++ = ' ';
 
     u->uri.data = b->last;
@@ -1341,6 +1345,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
 
+    /* 执行响应的配置脚本 */
     e.ip = headers->values->elts;
     e.pos = b->last;
     e.request = r;
@@ -1400,6 +1405,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            /* 将无法在配置中找到的header加入到http request里 */
             b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
 
             *b->last++ = ':'; *b->last++ = ' ';
@@ -1690,7 +1696,7 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                   "upstream process status line: %s\n", __FUNCTION__);
 
     u = r->upstream;
@@ -1921,7 +1927,7 @@ ngx_http_proxy_input_filter_init(void *data)
     u = r->upstream;
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+    ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                   "proxy input filter: %s\n%s\n", 
                   __FUNCTION__, data);
 
@@ -1985,7 +1991,7 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         return NGX_OK;
     }
 
-    ngx_log_error(NGX_LOG_ERR, p->upstream->log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, p->upstream->log, 0,
                   "proxy copy filter: %s\n%s\n", 
                   __FUNCTION__, buf->start);
 

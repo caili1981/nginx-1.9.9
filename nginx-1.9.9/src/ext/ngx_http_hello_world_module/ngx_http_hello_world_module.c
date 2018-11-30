@@ -1,12 +1,14 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+#include <ngx_log.h>
 typedef struct {
     ngx_str_t output_words;
 } ngx_http_hello_world_loc_conf_t;
 
 typedef struct {
     ngx_int_t idx;
+    ngx_str_t user_name;
 } ngx_http_hello_world_ctx_t;
 
 ngx_int_t ngx_http_hello_world_idx;
@@ -14,6 +16,7 @@ static char *ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf
 static void *ngx_http_hello_world_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_hello_world_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 static ngx_int_t ngx_http_hello_world_post_conf(ngx_conf_t *cf);
+static ngx_int_t ngx_http_hello_world_add_variables(ngx_conf_t *cf);
 
 static ngx_command_t ngx_http_hello_world_commands[] = {
     { ngx_string("hello_world"),
@@ -27,7 +30,7 @@ static ngx_command_t ngx_http_hello_world_commands[] = {
 };
 
 static ngx_http_module_t ngx_http_hello_world_module_ctx = {
-    NULL,     
+    ngx_http_hello_world_add_variables,     
     ngx_http_hello_world_post_conf,     
 
     NULL,     
@@ -44,50 +47,50 @@ static ngx_http_module_t ngx_http_hello_world_module_ctx = {
 
 ngx_int_t ngx_http_hello_world_init_master(ngx_log_t *log)
 {
-    ngx_log_error(NGX_LOG_WARN, log, 0, "init master\n");  
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "init master\n");  
     ngx_http_hello_world_idx = 100000;
     return NGX_OK;
 }
 
 ngx_int_t ngx_http_hello_world_init_module(ngx_cycle_t *cycle)
 {
-    ngx_log_error(NGX_LOG_WARN, cycle->log, 0, "init module\n");  
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "init module\n");  
     return NGX_OK;
 }
 
 ngx_int_t ngx_http_hello_world_exit_module(ngx_cycle_t *cycle)
 {
-    ngx_log_error(NGX_LOG_WARN, cycle->log, 0, "exit module\n");  
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "exit module\n");  
     return NGX_OK;
 }
 
 ngx_int_t ngx_http_hello_world_init_thread(ngx_cycle_t *cycle)
 {
-    ngx_log_error(NGX_LOG_WARN, cycle->log, 0, "init thread\n");  
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "init thread\n");  
     return NGX_OK;
 }
 
 void ngx_http_hello_world_exit_thread(ngx_cycle_t *cycle)
 {
-    ngx_log_error(NGX_LOG_WARN, cycle->log, 0, "exit thread\n");  
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "exit thread\n");  
     return;
 }
 
 ngx_int_t ngx_http_hello_world_init_process(ngx_cycle_t *cycle)
 {
-    ngx_log_error(NGX_LOG_WARN, cycle->log, 0, "init process\n");  
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "init process\n");  
     return NGX_OK;
 }
 
 void ngx_http_hello_world_exit_process(ngx_cycle_t *cycle)
 {
-    ngx_log_error(NGX_LOG_WARN, cycle->log, 0, "exit process\n");  
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "exit process\n");  
     return;
 }
 
 void ngx_http_hello_world_exit_master(ngx_cycle_t *cycle)
 {
-    ngx_log_error(NGX_LOG_WARN, cycle->log, 0, "exit master\n");  
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "exit master\n");  
     return;
 }
 
@@ -107,10 +110,74 @@ ngx_module_t ngx_http_hello_world_module = {
 };
 
 static ngx_int_t
+ngx_http_hello_world_get_username (ngx_http_request_t *r,
+                                   ngx_http_variable_value_t *v,
+                                   uintptr_t data)
+{
+    ngx_http_hello_world_ctx_t *ctx;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_hello_world_module);
+    if (ctx == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "can not find context\n");
+        return NGX_ERROR;
+    }
+    v->len = ctx->user_name.len;
+    v->valid = 1;
+    v->not_found = 0;
+    v->data = ctx->user_name.data;
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "get username to %s\n", (char *)v->data);
+    return NGX_OK;
+}
+
+void ngx_http_hello_world_set_username (ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_http_hello_world_ctx_t *ctx;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_hello_world_module);
+    if (ctx == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "can not find context\n");
+        return;
+    }
+
+    if (ctx->user_name.data == NULL) {
+        ctx->user_name.len = strlen((char *)v->data) + 1;
+        ctx->user_name.data = ngx_pcalloc(r->pool, ctx->user_name.len);
+        strcpy((char *)ctx->user_name.data, (char *)v->data);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "set username to %s\n", ctx->user_name.data);
+    }
+
+    return;
+}
+static ngx_http_variable_t  ngx_http_hello_world_vars[] = {
+
+    { ngx_string("user_name"), ngx_http_hello_world_set_username, ngx_http_hello_world_get_username, 0,
+      NGX_HTTP_VAR_CHANGEABLE | NGX_HTTP_VAR_NOCACHEABLE, 0 }
+};
+
+static ngx_int_t
+ngx_http_hello_world_add_variables(ngx_conf_t *cf)
+{
+    ngx_http_variable_t *var, *v;
+
+    for (v = ngx_http_hello_world_vars; v->name.len; v++) {
+        var = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->get_handler = v->get_handler;
+        var->set_handler = v->set_handler;
+        var->data = v->data;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_hello_world_post_read_phase_handler(ngx_http_request_t *r)
 {
     ngx_http_hello_world_ctx_t *ctx;
-    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "go to post read phase\n");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "go to post read phase\n");
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_hello_world_ctx_t));
     if (ctx == NULL) {
         return NGX_ERROR;
@@ -186,13 +253,19 @@ ngx_http_hello_world_handler(ngx_http_request_t *r)
     b->last = b->pos + sizeof("hello_world, ") - 1;
     b->memory = 1;
 
+    ctx = ngx_http_get_module_ctx(r, ngx_http_hello_world_module);
+    if (ctx == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "can not find context\n");
+        return NGX_ERROR;
+    }
+
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
 
     out[1].buf = b;
     out[1].next = &out[2];
 
-    b->pos = hlcf->output_words.data;
-    b->last = hlcf->output_words.data + (hlcf->output_words.len);
+    b->pos = ctx->user_name.data;
+    b->last = ctx->user_name.data + (ctx->user_name.len);
     b->memory = 1;
     b->last_buf = 0;
 
@@ -204,11 +277,6 @@ ngx_http_hello_world_handler(ngx_http_request_t *r)
     b->memory = 1;
     b->last_buf = 0;
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_hello_world_module);
-    if (ctx == NULL) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "can not find context\n");
-        return NGX_ERROR;
-    }
     memset(c_stats, 0, sizeof(c_stats));
     sprintf(c_stats, "You are the %lu person!\n", ctx->idx);
 
@@ -275,6 +343,7 @@ ngx_http_hello_world_request_filter(ngx_http_request_t *r)
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "set hello world context\n");
     return ngx_http_next_request_filter(r);
 }
+
 
 static char *
 ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)

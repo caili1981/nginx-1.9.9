@@ -123,7 +123,7 @@ typedef enum {
     NGX_HTTP_SERVER_REWRITE_PHASE,
 
     NGX_HTTP_FIND_CONFIG_PHASE,
-    NGX_HTTP_REWRITE_PHASE,
+    NGX_HTTP_REWRITE_PHASE,   /* 脚本的set命令，都是在这个时期完成的, 对应的是ngx_http_rewrite_handler */
     NGX_HTTP_POST_REWRITE_PHASE,
 
     NGX_HTTP_PREACCESS_PHASE,
@@ -183,6 +183,11 @@ typedef struct {
     ngx_uint_t                 variables_hash_max_size;
     ngx_uint_t                 variables_hash_bucket_size;
 
+    /* 
+     * ngx_http_variable_t 所定义的变量会在preconfiguration里添加到这个hash表里
+     * 为什么要在preconfiguration里，这是因为读取配置时有可能会读到这个变量 
+     * 具体变量存储在前面的variables变量里
+     */
     ngx_hash_keys_arrays_t    *variables_keys;
 
     ngx_array_t               *ports;

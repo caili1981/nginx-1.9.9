@@ -60,6 +60,9 @@ struct ngx_pool_s {
     ngx_pool_t           *current;
     ngx_chain_t          *chain;
     ngx_pool_large_t     *large;
+    /*
+     * 连接释放时的callback函数，用来清理模块内部的资源
+     */
     ngx_pool_cleanup_t   *cleanup;
     ngx_log_t            *log;
 };

@@ -427,7 +427,7 @@ struct ngx_http_request_s {
     /* /index.html HTTP1.1*/
     ngx_str_t                         uri;
 
-    /* ???? */
+    /* uri 里的参数 */
     ngx_str_t                         args;
 
     /* ??? */
@@ -461,6 +461,9 @@ struct ngx_http_request_s {
     ngx_http_handler_pt               content_handler;
     ngx_uint_t                        access_code;
 
+    /* 
+     * http 请求的变量值, ngx_http_create_request函数里进行创建，
+     * 其长度是core main config里决定的 */
     ngx_http_variable_value_t        *variables;
 
 #if (NGX_PCRE)
