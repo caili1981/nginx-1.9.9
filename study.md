@@ -1,6 +1,7 @@
 ### 待学习
   - upstream
   - subrequest
+    - ngx_http_upstream_init_round_robin
   - cookie
   - SSI是什么.
   - SSL是如何支持的.
@@ -212,7 +213,6 @@
       - ngx_http_static_handler
         - ngx_http_send_header
         - ngx_http_output_filter
-    
   ```
   (gdb) p *ph
   $23 = {checker = 0x42a51c <ngx_http_core_generic_phase>, handler = 0x46d069   <ngx_http_hello_world_post_read_phase_handler>, next = 1}
@@ -248,6 +248,46 @@
   $38 = {checker = 0x0, handler = 0x50000002, next = 0}
   (gdb)
   ```
+  
+
+### ngxin 变量
+
+  - 内部变量
+    > 系统能通过配置文件自动赋值. 
+    ```
+    在nginx.conf中
+    if ($http_user_agent ~ MIME) {
+      rewrite ^(.*)$ /mise/$1 break;
+    }
+    ```
+  - 外部变量
+    > 用户自己定义的变量
+    ```
+    ```
+  - 相应步骤:
+    - 所有可能用到的变量都在preconfiguration里添加到main_conf->variables_keys里.
+    - 读取配置的时候，如果遇到相应的变量，则从main_conf->variables_keys里查找，是否存在.
+      > 脚本 set 所对应的操作，会用到ngx_http_variables_t->set_handler函数，如果这个值将会更改，则需要定义相应的set_handler.
+      > NGX_HTTP_REWRITE_PHASE的回调函数ngx_http_rewrite_handler会触发脚本的执行.  
+    - 在所需要的阶段赋值, 配置阶段或者连接处理阶段都可以.
+  - ngx_http_variables_add_core_vars
+  - ngx_http_variables_t
+    > 所有变量，都通过variables进行定义
+  - ngx_variables_value_t
+  - 执行顺序
+    ```
+      set $file index1.html;
+      index $file;
+      set $file index2.html;
+    ```
+    - 上述配置会最终重定向到indext2.html. 
+      - rewrite phase
+        - 步骤1. file=index1.html.
+        - 步骤2. file=index2.html.
+      - content phase
+        - 步骤1. 冲定向到file, 结果显示index2.html.
+    
+    
 ### 调用栈
   ```
   (gdb) bt
