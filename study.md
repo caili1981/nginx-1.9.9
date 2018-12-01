@@ -150,7 +150,10 @@
       > ngx_http_upstream_create, 并设立upstream相关的回调函数.
     - ngx_http_read_client_request_body
       > 读取整个请求报文.
-      - 最后掉用ngx_http_upstream_init
+      - 最后调用ngx_http_upstream_init
+        - create_request callback
+          > proxy 模块，create request就是创建/修改相应的http请求.   
+          > 例如: 正常http1.1连接的connection时keep-alive的，但是proxy要求，connection需要改成close. 这是rfc的规定.
         - ngx_http_upstream_connect
           - ngx_http_upstream_send_request
             - ngx_http_upstream_process_header
