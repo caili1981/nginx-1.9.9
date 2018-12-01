@@ -250,7 +250,45 @@
   ```
   
 
-### ngxin 变量
+### ngxin 脚本引擎和变量
+  - nginx内部的脚本也是通过command来实现的.
+    - set $file "index.html" 
+      - 解析这个配置的时候，就会通过"ngx_http_rewrite_set"来进行处理。处理流程如下:
+        - 检查变量字段是不是以$开头
+        - 将变量加入到cmcf->variables_keys中, 而且是changable的. 
+          > ???为什么要放入main的配置中, 而不是loc的配置中??? 
+          > 为什么需要添加？？不应该是在模块的preconfiguration中就已经添加了变量么？？？
+        - 获取变量的下标.
+        - 根据loc的配置，执行相应的script. 
+    - 系统会将一行脚本编译成ngx_http_script_value_code_t’存入ngx_http_rewrite_loc_conf_t->codes中. 
+      - 脚本由一系列字符串组成, 可以分成多个执行块（执行块不定长）.
+        - 每个执行块都以函数指针开头.
+        - 后续跟执行此函数需要的变量.
+        - 每次进入函数指针所指的函数时，会将codes的当前位置进行偏移, 便宜的大小由当前函数所对应的数据结构决定. 
+
+          ```
+          set $user_name jack;
+          set $key_not_found abcd
+          ```
+          > 上述一段代码，最终rewrite模块编译出的codes如下:
+            ```
+            (gdb) p *(ngx_http_script_value_code_t *)((char *)rlcf->codes->elts)
+            $58 = {code = 0x442850 <ngx_http_script_value_code>, value = 0, text_len = 4, text_data = 7201071}
+            (gdb) p sizeof(ngx_http_script_value_code_t)
+            $59 = 32
+            (gdb) p *(ngx_http_script_code_pt *)(rlcf->codes->elts+32)
+            $60 = (ngx_http_script_code_pt) 0x4429ae <ngx_http_script_var_set_handler_code>
+            (gdb) p sizeof(ngx_http_script_var_handler_code_t)
+            $61 = 24
+            (gdb) p *(ngx_http_script_code_pt *)(rlcf->codes->elts+24)
+            $62 = (ngx_http_script_code_pt) 0x6de12f
+            (gdb) p *(ngx_http_script_code_pt *)(rlcf->codes->elts+24+32)
+            $63 = (ngx_http_script_code_pt) 0x442850 <ngx_http_script_value_code>
+            (gdb) p *(ngx_http_script_code_pt *)(rlcf->codes->elts+32+24+32)
+            $64 = (ngx_http_script_code_pt) 0x4428bb <ngx_http_script_set_var_code>
+            (gdb) p *(ngx_http_script_code_pt *)(rlcf->codes->elts+32+24+32+24)
+            $65 = (ngx_http_script_code_pt) 0x0
+            ```
 
   - 内部变量
     > 系统能通过配置文件自动赋值. 
