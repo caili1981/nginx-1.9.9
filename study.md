@@ -64,6 +64,9 @@
                         - ngx_http_core_content_phase
          
 ### nginx filter模块
+  - filter模块注册必须放在模块post_configuration回调函数里
+    - 因为ngx_http_top_header_filter是在post_configuration里初始化的.
+    - 如果放在command/preconfiguration里，初始化不起作用.
   - filter类型
     - header_filter
       - header/body_filter的顺序是和ngx_modules里注册顺序相反的.
@@ -158,15 +161,25 @@
           - ngx_http_upstream_send_request
             - ngx_http_upstream_process_header
 
-        
+### sub request
+  - 相关函数
+    - ngx_http_subrequest
+      > 创建一个链接，此时并没有将请求发出去.
+      - ngx_http_post_request
+    - ngx_http_send_special
+    - ngx_http_run_posted_requests
+    
     
 ### 数据结构
   - nginx hash
-    - 支持前/后通配符匹配. 实际上是查找三次.   
-      - 精确匹配  
-      - 前通配符匹配.
-      - 后通配符匹配.
-    - server的查找使用的是这种方式.
+    - ngx_hash_t 
+      > 普通hash表.
+    - ngx_hash_combined_t 
+      - 支持前/后通配符匹配. 实际上是查找三次.   
+        - 精确匹配  
+        - 前通配符匹配.
+        - 后通配符匹配.
+      - server的查找使用的是这种方式.
       
   - nginx 内存池
     - ngx_pool_t
@@ -302,7 +315,7 @@
     }
     ```
   - 外部变量
-    > 用户自己定义的变量
+    - 用户自己定义的变量
     ```
     ```
   - 相应步骤:
@@ -315,6 +328,8 @@
   - ngx_http_variables_t
     > 所有变量，都通过variables进行定义
   - ngx_variables_value_t
+  - ngx_http_complex_value
+    > 这个函数可以获得复杂脚本表达式的值. ngx_http_set_complex_value_slot可以进行读取脚本表达式.
   - 执行顺序
     ```
       set $file index1.html;
