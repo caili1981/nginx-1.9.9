@@ -1959,6 +1959,12 @@ ngx_http_send_header(ngx_http_request_t *r)
 }
 
 
+/*
+ * body fitler之后发送报文体, 注意:它并不发送header
+ * 如果需要发送header, 需要先填写headers_out, 
+ * 然后调用ngx_http_send_header
+ * send_header函数里会调用top_header_filter
+ */
 ngx_int_t
 ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
@@ -2420,6 +2426,9 @@ ngx_http_gzip_quantity(u_char *p, u_char *last)
 #endif
 
 
+/*
+ * 创建一个subrequest，并将其加入postponed链表中
+ */
 ngx_int_t
 ngx_http_subrequest(ngx_http_request_t *r,
     ngx_str_t *uri, ngx_str_t *args, ngx_http_request_t **psr,
@@ -2535,7 +2544,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     if (r->postponed) {
         for (p = r->postponed; p->next; p = p->next) { /* void */ }
-        p->next = pr;
+        p->next = pr; /* 将当前pr放入postponed队尾 */
 
     } else {
         r->postponed = pr;

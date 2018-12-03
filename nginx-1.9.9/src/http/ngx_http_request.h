@@ -440,15 +440,27 @@ struct ngx_http_request_s {
     /* HTTP/1.1\r\nHost */
     ngx_str_t                         http_protocol;
 
-    /* output buffer, 为什么没有last字段？？这样的后果是在前面添加性能比较好 */
+    /* output buffer, header/body都通过这个字段出去, 为什么没有last字段？？这样的后果是在前面添加性能比较好 */
     ngx_chain_t                      *out;
 
-    /* 主请求, 通过这个域能判断当前request是不是主请求 */
+    /* 
+     * 主请求, 通过这个域能判断当前request是不是主请求, 
+       如: r->main == r */
     ngx_http_request_t               *main;
-    /* 当前request的父request？？？*/
+
+    /* 当前request的父request, 如果当前为main, 那么parent = NULL*/
     ngx_http_request_t               *parent;
+
+    /* 同一个父request 下的所有子请求会通过posntponed链接成一个链表 */
     ngx_http_postponed_request_t     *postponed;
+
+    /* 回调函数, 以及回调函数所需要的数据, 此回调函数在finalize时会调用 */
     ngx_http_post_subrequest_t       *post_subrequest;
+
+    /* 
+     * 已经完成的请求链表，但是仍未发送数据
+     * 如果不存放在posted_request里，将再无事件进行驱动 
+     */
     ngx_http_posted_request_t        *posted_requests;
 
     /* 当前ngx_http_handler时会进入phases engine, phase_handler表明当前处于哪一个phase */

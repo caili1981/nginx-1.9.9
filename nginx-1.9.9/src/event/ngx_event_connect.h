@@ -37,6 +37,9 @@ typedef void (*ngx_event_save_peer_session_pt)(ngx_peer_connection_t *pc,
 struct ngx_peer_connection_s {
     ngx_connection_t                *connection;
 
+    /*
+     * upstream server链接的socket地址, 由get函数获得
+     */
     struct sockaddr                 *sockaddr;
     socklen_t                        socklen;
     ngx_str_t                       *name;
@@ -44,6 +47,9 @@ struct ngx_peer_connection_s {
     ngx_uint_t                       tries;
     ngx_msec_t                       start_time;
 
+    /*
+     * 在ip_hash里，使用的是ngx_http_upstream_get_ip_hash_peer
+     */
     ngx_event_get_peer_pt            get;
     ngx_event_free_peer_pt           free;
     void                            *data;

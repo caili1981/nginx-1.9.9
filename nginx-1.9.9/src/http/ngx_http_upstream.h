@@ -82,8 +82,18 @@ typedef ngx_int_t (*ngx_http_upstream_init_peer_pt)(ngx_http_request_t *r,
 
 
 typedef struct {
+    /* 
+     * for ip_hash, 
+     * peer.init_upstream = ngx_http_upstream_init_ip_hash 
+     * peer.init = ngx_http_upstream_init_ip_hash_peer
+     */
+
     ngx_http_upstream_init_pt        init_upstream;
     ngx_http_upstream_init_peer_pt   init;
+
+    /*
+     * data 指向ngx_http_upstream_rr_peers_t
+     */
     void                            *data;
 } ngx_http_upstream_peer_t;
 
@@ -321,6 +331,12 @@ struct ngx_http_upstream_s {
 
     ngx_buf_t                        from_client;
 
+    /* 
+     * 响应buffer, 在调用input_filter时， last指向当前接收到的报文的起始位置,  
+     * 这个buffer是可被重复使用的, 如果想重复使用buffer，则可以通过移动last的位置
+     * 来告诉处理函数.
+     * buffer->last表示存储下次响应报文的开始位置，如果不移动，那么报文将会被覆盖
+     */
     ngx_buf_t                        buffer;
     off_t                            length;
 

@@ -742,7 +742,9 @@ found:
     u->ssl_name = uscf->host;
 #endif
 
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "init peer connection: %s\n", __FUNCTION__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, 
+                   "init peer connection: %s\n", __FUNCTION__);
+
     if (uscf->peer.init(r, uscf) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);

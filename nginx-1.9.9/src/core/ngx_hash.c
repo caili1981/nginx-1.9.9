@@ -332,6 +332,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
 found:
 
     for (i = 0; i < size; i++) {
+        /* 初始化test的长度为void*, 即最短长度 */
         test[i] = sizeof(void *);
     }
 
@@ -340,12 +341,14 @@ found:
             continue;
         }
 
-        key = names[n].key_hash % size;
+        /* test记录每个hash桶所需的内存长度 */
+        key = names[n].key_hash % size; /* 计算key的位置 */
         test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
     }
 
     len = 0;
 
+    /* 计算所有hash_bucket所需的内存长度 */
     for (i = 0; i < size; i++) {
         if (test[i] == sizeof(void *)) {
             continue;
@@ -383,6 +386,7 @@ found:
 
     elts = ngx_align_ptr(elts, ngx_cacheline_size);
 
+    /* 将hash bucket指向一个偏移 */
     for (i = 0; i < size; i++) {
         if (test[i] == sizeof(void *)) {
             continue;
@@ -397,6 +401,7 @@ found:
         test[i] = 0;
     }
 
+    /* 将所有元素加入hash表，并建立连接 */
     for (n = 0; n < nelts; n++) {
         if (names[n].key.data == NULL) {
             continue;

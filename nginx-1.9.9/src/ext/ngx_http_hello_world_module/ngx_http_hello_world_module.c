@@ -3,12 +3,13 @@
 #include <ngx_http.h>
 #include <ngx_log.h>
 typedef struct {
-    ngx_str_t output_words;
+    ngx_http_complex_value_t *cv;
 } ngx_http_hello_world_loc_conf_t;
 
 typedef struct {
     ngx_int_t idx;
     ngx_str_t user_name;
+    ngx_str_t footer;
 } ngx_http_hello_world_ctx_t;
 
 ngx_int_t ngx_http_hello_world_idx;
@@ -17,14 +18,15 @@ static void *ngx_http_hello_world_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_hello_world_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
 static ngx_int_t ngx_http_hello_world_post_conf(ngx_conf_t *cf);
 static ngx_int_t ngx_http_hello_world_add_variables(ngx_conf_t *cf);
+static ngx_int_t ngx_http_hello_world_request_filter(ngx_http_request_t *r);
 
 static ngx_command_t ngx_http_hello_world_commands[] = {
     { ngx_string("hello_world"),
         NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
         ngx_http_hello_world,
         NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_hello_world_loc_conf_t, output_words),
-        NULL
+        0,
+        NULL,
     },
     ngx_null_command
 };
@@ -142,7 +144,6 @@ void ngx_http_hello_world_set_username (ngx_http_request_t *r,
         ctx->user_name.len = strlen((char *)v->data) + 1;
         ctx->user_name.data = ngx_pcalloc(r->pool, ctx->user_name.len);
         strcpy((char *)ctx->user_name.data, (char *)v->data);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "set username to %s\n", ctx->user_name.data);
     }
 
     return;
@@ -190,9 +191,10 @@ ngx_http_hello_world_post_read_phase_handler(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_hello_world_content_phase_handler(ngx_http_request_t *r)
 {
+#if 0
     ngx_chain_t *out;
     ngx_buf_t *b;
-    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "go to content phase\n");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "go to content phase\n");
 
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
     out = ngx_pcalloc(r->pool, sizeof(ngx_chain_t));
@@ -206,6 +208,8 @@ ngx_http_hello_world_content_phase_handler(ngx_http_request_t *r)
     b->memory = 1;
     b->last_buf = 0;
     r->out = out;
+    r->headers_out.content_length_n += b->last - b->pos;
+#endif
 
     return NGX_DECLINED;
 }
@@ -238,9 +242,6 @@ ngx_http_hello_world_handler(ngx_http_request_t *r)
     ngx_buf_t *b;
     ngx_chain_t out[4];
 
-    ngx_http_hello_world_loc_conf_t *hlcf;
-    hlcf = ngx_http_get_module_loc_conf(r, ngx_http_hello_world_module);
-
     r->headers_out.content_type.len = sizeof("text/plain") - 1;
     r->headers_out.content_type.data = (u_char *) "text/plain";
 
@@ -252,6 +253,9 @@ ngx_http_hello_world_handler(ngx_http_request_t *r)
     b->pos = (u_char *) "hello_world, ";
     b->last = b->pos + sizeof("hello_world, ") - 1;
     b->memory = 1;
+    b->last_buf = 0;
+
+    ngx_http_hello_world_request_filter(r);
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_hello_world_module);
     if (ctx == NULL) {
@@ -264,8 +268,8 @@ ngx_http_hello_world_handler(ngx_http_request_t *r)
     out[1].buf = b;
     out[1].next = &out[2];
 
-    b->pos = ctx->user_name.data;
-    b->last = ctx->user_name.data + (ctx->user_name.len);
+    b->pos = ctx->footer.data;
+    b->last = ctx->footer.data + (ctx->footer.len);
     b->memory = 1;
     b->last_buf = 0;
 
@@ -289,8 +293,9 @@ ngx_http_hello_world_handler(ngx_http_request_t *r)
     b->last_buf = 1;
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = hlcf->output_words.len
+    r->headers_out.content_length_n = ctx->footer.len
         + sizeof("hello_world, ") + strlen(c_stats);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "content length: %d\n", r->headers_out.content_length_n);
     rc = ngx_http_send_header(r);
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
         return rc;
@@ -309,9 +314,8 @@ ngx_http_hello_world_create_loc_conf(ngx_conf_t *cf)
     {
         return NGX_CONF_ERROR;
     }
-    conf->output_words.len = 0;
 
-    conf->output_words.data = NULL;
+    conf->cv = NULL;
 
     return conf;
 }
@@ -320,28 +324,26 @@ ngx_http_hello_world_create_loc_conf(ngx_conf_t *cf)
 static char *
 ngx_http_hello_world_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-    ngx_http_hello_world_loc_conf_t *prev = parent;
-    ngx_http_hello_world_loc_conf_t *conf = child;
-
-    ngx_conf_merge_str_value(conf->output_words, prev->output_words, "boy");
-
     return NGX_CONF_OK;
 }
 
-static ngx_http_output_header_filter_pt  ngx_http_next_request_filter;
 
 static ngx_int_t
 ngx_http_hello_world_request_filter(ngx_http_request_t *r)
 {
     ngx_http_hello_world_ctx_t *ctx;
+    ngx_http_hello_world_loc_conf_t *lcf;
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_hello_world_ctx_t));
     if (ctx == NULL) {
         return NGX_ERROR;
     }
     ctx->idx = ngx_http_hello_world_idx;
+    lcf = ngx_http_get_module_loc_conf(r, ngx_http_hello_world_module);
+    if (ngx_http_complex_value(r, lcf->cv, &ctx->footer) != NGX_OK) {
+        return NGX_ERROR;
+    }
     ngx_http_set_ctx(r, ctx, ngx_http_hello_world_module);
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "set hello world context\n");
-    return ngx_http_next_request_filter(r);
+    return NGX_OK;
 }
 
 
@@ -353,9 +355,6 @@ ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_hello_world_handler;
 
-    ngx_conf_set_str_slot(cf, cmd, conf);
-    ngx_http_next_request_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ngx_http_hello_world_request_filter;
-
+    ngx_http_set_complex_value_slot(cf, cmd, conf);
     return NGX_CONF_OK;
 }

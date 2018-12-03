@@ -83,10 +83,12 @@ static u_char ngx_http_upstream_ip_hash_pseudo_addr[3];
 static ngx_int_t
 ngx_http_upstream_init_ip_hash(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 {
+    /* 在读取配置完init_main_conf中调用 */
     if (ngx_http_upstream_init_round_robin(cf, us) != NGX_OK) {
         return NGX_ERROR;
     }
 
+    /* 这个函数会在 ngx_http_upstream_init_request中调用 */
     us->peer.init = ngx_http_upstream_init_ip_hash_peer;
 
     return NGX_OK;

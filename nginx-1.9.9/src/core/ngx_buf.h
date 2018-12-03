@@ -17,6 +17,7 @@ typedef void *            ngx_buf_tag_t;
 
 typedef struct ngx_buf_s  ngx_buf_t;
 
+/* size = 80, 可见ngx_buf_t 的overhead是非常大的 */
 struct ngx_buf_s {
     u_char          *pos;
     u_char          *last;
@@ -43,9 +44,15 @@ struct ngx_buf_s {
     unsigned         mmap:1;
 
     unsigned         recycled:1;
+    /*
+     * buffer在文件里, 例如静态页面
+     */
     unsigned         in_file:1;
     unsigned         flush:1;
     unsigned         sync:1;
+    /*
+     * 最后一个buffer
+     */
     unsigned         last_buf:1;
     unsigned         last_in_chain:1;
 

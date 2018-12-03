@@ -50,6 +50,7 @@ typedef struct {
 
 
 typedef struct {
+    /* 如果hash值为空，则默认会创建wc_hash */
     ngx_hash_t       *hash;
     ngx_hash_key_pt   key;
 

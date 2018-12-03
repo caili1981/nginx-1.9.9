@@ -45,6 +45,10 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         n = 0;
         w = 0;
 
+        /* 
+         * 计算所有的地址数和权重数之和 
+         * 地址数即为peer数
+         */
         for (i = 0; i < us->servers->nelts; i++) {
             if (server[i].backup) {
                 continue;
@@ -85,6 +89,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 continue;
             }
 
+            /* 对每一个peer进行权重赋值, 并将其链接起来 */
             for (j = 0; j < server[i].naddrs; j++) {
                 peer[n].sockaddr = server[i].addrs[j].sockaddr;
                 peer[n].socklen = server[i].addrs[j].socklen;
@@ -172,6 +177,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     }
 
 
+    /* 下面的代码是implicit定义, 只有当没有定义server时才会走到这 */
     /* an upstream implicitly defined by proxy_pass, etc. */
 
     if (us->port == 0) {
