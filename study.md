@@ -1,4 +1,6 @@
 ### 待学习
+  - nginx的配置手册
+    > [配置手册](http://shouce.jb51.net/nginx/left.html)
   - upstream
   - subrequest
     - ngx_http_upstream_init_round_robin
@@ -8,7 +10,9 @@
   - gzip模块.
   - chunk模块.
   - 能否撰写流模式的反病毒引擎？是否有开源的反病毒程序？
-  
+  - nginx实战一书.
+  - nginx跟踪调试
+    [获取链接](https://www.cnblogs.com/jimodetiantang/p/9188789.html)
 
 ### 主要特性
   - 与apache相比
@@ -146,11 +150,23 @@
     - proxy_redirect
     - proxy_store
     - proxy_bind
+  - upstream的三种处理方式
+    - 不转发上游响应.
+      - subrequest可能要用到，因为我们需要修改上游响应.
+    - 上游网速快
+    - 下游网速快
   - proxy_pass
     - ngx_http_proxy_pass
       > 读取配置信息，并改变ngx_http_core_module的处理函数. 
     - ngx_http_proxy_handler
-      > ngx_http_upstream_create, 并设立upstream相关的回调函数.
+      - ngx_http_upstream_create, 
+      - 设立upstream相关的回调函数.
+        - create_request
+        - process_header
+        - abort/reinit request
+        - finalize_request
+        - input_filter
+  
     - ngx_http_read_client_request_body
       > 读取整个请求报文.
       - 最后调用ngx_http_upstream_init
@@ -277,8 +293,10 @@
       - 解析这个配置的时候，就会通过"ngx_http_rewrite_set"来进行处理。处理流程如下:
         - 检查变量字段是不是以$开头
         - 将变量加入到cmcf->variables_keys中, 而且是changable的. 
-          > ???为什么要放入main的配置中, 而不是loc的配置中??? 
+          - 为什么要放入main的配置中, 而不是loc的配置中??? 
+            > 因为变量的定义是整个main结构所见的.
           > 为什么需要添加？？不应该是在模块的preconfiguration中就已经添加了变量么？？？
+          > 如果没有经过set 语句，就不会加入到variables_keys中，后续使用就会报错.
         - 获取变量的下标.
         - 根据loc的配置，执行相应的script. 
     - 系统会将一行脚本编译成ngx_http_script_value_code_t’存入ngx_http_rewrite_loc_conf_t->codes中. 
@@ -312,7 +330,9 @@
             ```
 
   - 内部变量
-    > 系统能通过配置文件自动赋值. 
+    - 模块内部已经定义的变量. 
+      > 通过ngx_http_variables_t所定义的.
+    
     ```
     在nginx.conf中
     if ($http_user_agent ~ MIME) {
@@ -321,6 +341,7 @@
     ```
   - 外部变量
     - 用户自己定义的变量
+      > set语句所定义的.
     ```
     ```
   - 相应步骤:
