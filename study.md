@@ -11,6 +11,8 @@
   - chunk模块.
   - 能否撰写流模式的反病毒引擎？是否有开源的反病毒程序？
   - nginx实战一书.
+  - tnginx
+    - sysgurad模块. 据说这个模块在真实server的情况下很有用.
   - nginx跟踪调试
     [获取链接](https://www.cnblogs.com/jimodetiantang/p/9188789.html)
 
@@ -26,12 +28,21 @@
   - 全异步工作方式
     - 通过epoll等异步方式进行操作, 非常高效. 
     - 如果不小心掉用了阻塞操作，将会极大的影响nginx的性能.
-  
+### 模块
+  - 定义
+    - module
+      - ctx
+      - commands 
+      - init_master
+      - init_process
+      - init_module
+    
 ### 配置
   - 格式
     > 命令行 + 参数(可以多个).  
     > 每一个关键字都是一个命令, 如http/server/location都有对应的命令. 
     > 可以自定义命令。  
+
   - 继承结构
     > 参见《深入理解nginx》第10章.
     
@@ -288,6 +299,7 @@
   
 
 ### ngxin 脚本引擎和变量
+
   - nginx内部的脚本也是通过command来实现的.
     - set $file "index.html" 
       - 解析这个配置的时候，就会通过"ngx_http_rewrite_set"来进行处理。处理流程如下:
@@ -344,6 +356,13 @@
       > set语句所定义的.
     ```
     ```
+  - 特殊变量
+    - $arg_xxx/$cookie_xxx
+      > 如: $arg_class表示url问号后所代表的参数.
+      > 它其实也是一个变量，在cmcf里占一个位置。它的处理程序就是读取url，并把相应的变量解析出来， 性能不如正常的变量.
+  - 变量共享
+    > 变量的生命周期，同一个主请求内.
+    > 需要特别注意的是，如果两个location下对同一个变量赋值，而且会出现跳转，或者子请求到另一个location时，变量就会被覆盖。
   - 相应步骤:
     - 所有可能用到的变量都在preconfiguration里添加到main_conf->variables_keys里.
     - 读取配置的时候，如果遇到相应的变量，则从main_conf->variables_keys里查找，是否存在.
