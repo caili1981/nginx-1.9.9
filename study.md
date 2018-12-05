@@ -113,19 +113,32 @@
 
 ### upstream 处理流程
   - 负载均衡
-    - round_robin
-      > [算法链接](https://blog.csdn.net/zhangskd/article/details/50194069)
+    - 加权round_robin
+      > [算法链接](https://blog.csdn.net/zhangskd/article/details/50194069) ***非常经典***
     - ip_hash
       - 算法思路
         - 计算所有ip_server的权重之和.
         - 根据源ip，计算hash = hash(int)% total_weight.
         - 遍历所有的peer，如果hash> weight, 则，hash=hash-weight. 直到找到一个weight大于hash的peer为止.
+      - 可以将同一个台主机绑定到同一台服务器上. 
+        > 如果client是nat模式，而且源ip由可能变，则这种方式会出现问题. 应对方式是cookie_hash
+    - url_hash
+      - 根据url进行hash，相同的url会映射到同一个server上, 能搞提高server的缓存利用率.
+    - cookie_hash
+      - 根据cookie hash到不同的server上。由于一个用户的用户id cookie在一段时间内保持恒定. 根据cookie hash可以将用户绑定到特定的服务器上. 
+    - fair
+      - 根据每个请求的处理速度计算, 比加权轮询更加智能.
+      
   - ngx_http_proxy_handler
     - ngx_http_upstream_create
     - ngx_http_read_client_request_body
       - ngx_http_upstream_init.    ====> upstream的启动函数, 进入它之后，所有的后续流程都将自动化进行，用户模块可以无需关心.
         - ngx_http_upstream_init_request
+          - uscf->peer.init
+            - ngx_http_upstream_init_ip_hash_peer
           - ngx_http_upstream_connect
+            - ngx_event_connect_peer
+              > r->upstream.peer.get 获得正确的peer地址.
             - ngx_http_upstream_send_request
               - ngx_http_upstream_send_request_body
               - ngx_http_upstream_process_header
