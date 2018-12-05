@@ -42,7 +42,10 @@
     > 命令行 + 参数(可以多个).  
     > 每一个关键字都是一个命令, 如http/server/location都有对应的命令. 
     > 可以自定义命令。  
-
+  - 配置执行顺序
+    - create_config
+    - command_handler
+    - init_config
   - 继承结构
     > 参见《深入理解nginx》第10章.
     
@@ -109,6 +112,14 @@
       - ngx_http_write_filter
 
 ### upstream 处理流程
+  - 负载均衡
+    - round_robin
+      > [算法链接](https://blog.csdn.net/zhangskd/article/details/50194069)
+    - ip_hash
+      - 算法思路
+        - 计算所有ip_server的权重之和.
+        - 根据源ip，计算hash = hash(int)% total_weight.
+        - 遍历所有的peer，如果hash> weight, 则，hash=hash-weight. 直到找到一个weight大于hash的peer为止.
   - ngx_http_proxy_handler
     - ngx_http_upstream_create
     - ngx_http_read_client_request_body
