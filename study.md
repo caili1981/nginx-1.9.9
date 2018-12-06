@@ -15,6 +15,8 @@
     - sysgurad模块. 据说这个模块在真实server的情况下很有用.
   - nginx跟踪调试
     [获取链接](https://www.cnblogs.com/jimodetiantang/p/9188789.html)
+  - nginx如何保证sub request的顺序.
+  - nginx header_filter/body_filter设计原理.
 
 ### 主要特性
   - 与apache相比
