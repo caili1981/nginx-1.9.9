@@ -118,6 +118,8 @@
       - ngx_http_chunked_header_filter
       - ngx_http_header_filter
         > 注意前面有一个ngx_http_headers_filter
+        > ngx_http_write_filter将
+
     - body_filter
       - ngx_http_top_body_filter (ngx_http_output_filter函数内调用)
       - ngx_http_range_body_filter
