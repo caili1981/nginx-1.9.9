@@ -17,6 +17,7 @@
     [获取链接](https://www.cnblogs.com/jimodetiantang/p/9188789.html)
   - nginx如何保证sub request的顺序.
   - nginx header_filter/body_filter设计原理.
+  - proxy_pass DNS如何获得?
 
 ### 主要特性
   - 与apache相比
