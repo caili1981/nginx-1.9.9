@@ -92,6 +92,7 @@
           - ngx_http_top_header_filter
         - ngx_http_output_filter
           - ngx_http_top_body_filter
+            > 在一个请求过程中，这个函数可能会被调用很多次，如果所有的chain都没有置'last'标志，则后续仍会调用body_filter.
       - 由此可见，top_body_filter是在handler处理完之后被调用.
     - 和upstream的关系
       - upstream在调用完input_filter之后，会调用ngx_event_pipe_write_to_downstream, 并调用ngx_http_output_filter
@@ -169,6 +170,13 @@
   - 每一级函数都可以被socket中断. 当socket的条件得以满足时会继续后续流程. 
   
 ### subrequest 处理流程.
+  - subrequest被整合成一个树状结构.
+  - 发送subrequest是按作树的后序遍历. 例如:
+    > sub11->sub12->sub21->sub22
+  - ngx_http_next_body_filter
+    - 这个函数会在后序链表(ngx_http_postpone_filter)里会将自身添加到r->postponed队列.
+    - 在它之前调用ngx_http_subrequest会排在当前request之前.
+    - 在它之后调用的会排在之后.
 
 ### nginx事件
   - nginx 是事件驱动型设计，无阻塞模型.
