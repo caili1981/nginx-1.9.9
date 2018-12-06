@@ -85,7 +85,15 @@
                         - ngx_http_core_content_phase
          
 ### nginx filter模块
-  - body filter 和header filter是在产生响应后，并在发会client之前. 
+  - body filter 和header filter是在产生响应后，并在发回client之前. 
+    - 调用关系
+      - ngx_http_static_handler
+        - ngx_http_output_filter
+          - ngx_http_top_body_filter
+      - 由此可见，top_body_filter是在handler处理完之后被调用.
+    - 和upstream的关系
+      - upstream在调用完input_filter之后，会调用ngx_event_pipe_write_to_downstream, 并调用ngx_http_output_filter
+      - 对于有upstream的时候，input_filter在前. ngx_http_top_body_filter调用在后.
     > 例如： 转发时若需要修改报文头content_length，则需要在header filter里进行.  
     > 如果要对报文进行改变，则应该在body filter里进行.    
     > body filter 会传入ngx_chain_t。 指向待输出的buffer.    
@@ -334,7 +342,36 @@
 
 ### ngxin 脚本引擎和变量
   - nginx 脚本兼容pcre.
-    > perl.
+    - perl.
+    - 支持正则表达式.
+    - rewrite 只能能直接对url进行重写.
+      - 模式匹配
+        - ~ 表示对uri进行模式匹配.
+        - (.+?) 表示贪婪查找.
+        - (.*)表示非贪婪查找结果.
+        - 
+        ```
+             location /av_download {
+            resolver 172.29.151.60;
+            set $a "args is: $args\n";
+
+            if ($arg_target ~ ^(.+?)/(.*)$) {
+                set $b "非贪婪查找结果:$2\n";
+            }
+
+            if ($arg_target ~ ^(.*)/(.*)$) {
+                set $c "贪婪查找结果:$2\n";
+            }
+            echo "\n$a\n$b\n$c\n";            
+        }
+        curl http://192.168.101.2/av_download?target=www.sohu.com/a/b/279837212_260616?_f=index_chan08news_6
+
+        args is: target=www.sohu.com/a/b/279837212_260616?_f=index_chan08news_6
+
+        非贪婪查找结果:a/b/279837212_260616?_f=index_chan08news_6
+
+        贪婪查找结果:279837212_260616?_f=index_chan08news_6
+        ```
   - nginx内部的脚本也是通过command来实现的.
     - set $file "index.html" 
       - 解析这个配置的时候，就会通过"ngx_http_rewrite_set"来进行处理。处理流程如下:
