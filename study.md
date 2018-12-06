@@ -88,6 +88,8 @@
   - body filter 和header filter是在产生响应后，并在发回client之前. 
     - 调用关系
       - ngx_http_static_handler
+        - ngx_http_send_header
+          - ngx_http_top_header_filter
         - ngx_http_output_filter
           - ngx_http_top_body_filter
       - 由此可见，top_body_filter是在handler处理完之后被调用.
@@ -118,7 +120,7 @@
       - ngx_http_chunked_header_filter
       - ngx_http_header_filter
         > 注意前面有一个ngx_http_headers_filter
-        > ngx_http_write_filter将
+        > ngx_http_write_filter将报文写出去. 
 
     - body_filter
       - ngx_http_top_body_filter (ngx_http_output_filter函数内调用)
