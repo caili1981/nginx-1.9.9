@@ -333,7 +333,8 @@
   
 
 ### ngxin 脚本引擎和变量
-
+  - nginx 脚本兼容pcre.
+    > perl.
   - nginx内部的脚本也是通过command来实现的.
     - set $file "index.html" 
       - 解析这个配置的时候，就会通过"ngx_http_rewrite_set"来进行处理。处理流程如下:
