@@ -2,7 +2,12 @@
 ### 特性说明
   - 冲定向
     - 规则
-      > 将http://192.168.101.2/av/www.sohu.com/tag/55770冲定向到server http://www.sohu.com/tag/55770
+      - 规则1 
+        - 获取post包体的真实地址.
+        - 将post命令转换成get命令.
+        - 在resp里回应下载并过滤之后的文件.
+      - 规则2
+        将http://192.168.101.2/av/www.sohu.com/tag/55770冲定向到server http://www.sohu.com/tag/55770
     - 目的
       > 熟悉url重写.      
   - 病毒扫描
