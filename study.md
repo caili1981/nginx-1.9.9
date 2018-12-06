@@ -19,6 +19,9 @@
   - nginx header_filter/body_filter设计原理.
   - proxy_pass DNS如何获得?
   - [nginx从入门到精通](https://www.kancloud.cn/kancloud/master-nginx-develop/51833)
+  - nginx stream模块.
+  - [网易云课堂里](https://study.163.com/course/introduction.htm?courseId=1005083015#/courseDetail?tab=1)
+    
 
 ### 主要特性
   - 与apache相比
