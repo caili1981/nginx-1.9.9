@@ -32,11 +32,8 @@
 ### 配置
   - config
     ```
-    upstream backend_av_server {
-      server 127.0.0.1;
-    }
     av_server backend_av_server:
-    location /av/ {
+    location /av {
       proxy_pass http://$url/;
       if ($http_method == "get") {
         av_content resp;
@@ -46,5 +43,10 @@
       if ($http_method == "post") {
         av req;
       }
+    }
+    
+    location /av_download {
+     av on;     #根据请求报文的内容做冲定向.
+     av_msg "Warning: found virus in file<$filename>, size<$http_content_length> time cost:${av_time_cost}s";
     }
     ```
