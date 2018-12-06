@@ -84,6 +84,13 @@
                         - ngx_http_core_content_phase
          
 ### nginx filter模块
+  - body filter 和header filter是在产生响应后，并在发会client之前. 
+    > 例如： 转发时若需要修改报文头content_length，则需要在header filter里进行.  
+    > 如果要对报文进行改变，则应该在body filter里进行.    
+    > body filter 会传入ngx_chain_t。 指向待输出的buffer.    
+    > header filter 会传入ngx_http_request_t. 如果需要修改content length, 则需要在headers_out里进行修改.
+  - upstream模块同样需要配置一个input filter. 这个filter在报文头已经收到并解析，但是报文体还在接收时.
+    > 参见ngx_http_proxy_module.c
   - filter模块注册必须放在模块post_configuration回调函数里
     - 因为ngx_http_top_header_filter是在post_configuration里初始化的.
     - 如果放在command/preconfiguration里，初始化不起作用.
