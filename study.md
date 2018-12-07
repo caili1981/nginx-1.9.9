@@ -22,7 +22,10 @@
   - nginx stream模块.
   - [网易云课堂里](https://study.163.com/course/introduction.htm?courseId=1005083015#/courseDetail?tab=1)
   - nginx文件操作. 
+    aio 机制.
   - nginx-copy filter.
+  - nginx应用场景.
+    https://docs.nginx.com/nginx/admin-guide/
 
 ### 主要特性
   - 与apache相比
