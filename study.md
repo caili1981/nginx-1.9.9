@@ -245,6 +245,30 @@
         - ngx_http_upstream_connect
           - ngx_http_upstream_send_request
             - ngx_http_upstream_process_header
+   - proxy_cache
+    - [nginx的cache机制](https://blog.csdn.net/weiyuefei/article/details/35295117)
+    - 将proxy到的内容cache到本地, 如果下次代理同样的uri，就直接从cache里去内容。
+      - proxy_cache 打开时会启动两个cache管理的进程.         
+      ```
+      nobody    1920  0.0  0.0  34780  2720 ?        S    18:21   0:00 nginx: cache manager process
+      nobody    1921  0.0  0.0  34780  2720 ?        S    18:21   0:00 nginx: cache loader process
+      ```
+      - 多个worker-thread之间会以共享内存的方式访问cache.
+    - 实例:
+      ```
+        proxy_cache_path /usr/local/nginx/html/cache levels=1:2 keys_zone=cache_one:1m inactive=1d max_size=30g;
+        location ~ ^/av_redirect/(.*)/(.*)$ {
+            resolver 172.29.151.60;
+
+#proxy_pass和proxy_cache必须在同级目录下
+            proxy_pass http://$1/$2;
+            proxy_cache_key $host$uri$args;
+            proxy_cache cache_one;
+            proxy_cache_valid 200 1d;
+            proxy_cache_valid any 1m;
+        }
+
+      ```
 
 ### sub request
   - 相关函数
