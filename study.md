@@ -21,7 +21,8 @@
   - [nginx从入门到精通](https://www.kancloud.cn/kancloud/master-nginx-develop/51833)
   - nginx stream模块.
   - [网易云课堂里](https://study.163.com/course/introduction.htm?courseId=1005083015#/courseDetail?tab=1)
-    
+  - nginx文件操作. 
+  - nginx-copy filter.
 
 ### 主要特性
   - 与apache相比
@@ -509,7 +510,8 @@
       - content phase
         - 步骤1. 冲定向到file, 结果显示index2.html.
     
-    
+### nginx 文件操作.
+  - 
 ### 调用栈
   ```
   (gdb) bt
