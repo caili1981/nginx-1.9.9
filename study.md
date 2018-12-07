@@ -248,7 +248,16 @@
    - proxy_cache
     - [nginx的cache机制](https://blog.csdn.net/weiyuefei/article/details/35295117)
     - 将proxy到的内容cache到本地, 如果下次代理同样的uri，就直接从cache里去内容。
-      - proxy_cache 打开时会启动两个cache管理的进程.         
+      - proxy_cache 打开时会启动两个cache管理的进程. 
+      - cache manager process和nginx worker process共享内存. 
+      - 如果需要打开一个新的文件，worker会将一个cache描述符加入到共享内存里. 
+      - cache manger 会读取这个描述符队列, 并将这个描述符中所对应的buf chain写到文件里.
+      - 由于cache manager的存在，worker process不会再进行文件的读写操作，相关文件交由cache manager去完成. 
+        - worker thread只往共享队列里添加描述符. 性能非常高.
+        - proxy cache和open_file_cache不一样. 
+          - 静态文件默认情况下是由sendfile交由内存完成发送.
+          - 再gzip打开的时候，会通过pread读取, 注意这个操作是阻塞的. 所有一般都需要为静态文件配置缓存，以提高性能. 
+
       ```
       nobody    1920  0.0  0.0  34780  2720 ?        S    18:21   0:00 nginx: cache manager process
       nobody    1921  0.0  0.0  34780  2720 ?        S    18:21   0:00 nginx: cache loader process
@@ -260,7 +269,7 @@
         location ~ ^/av_redirect/(.*)/(.*)$ {
             resolver 172.29.151.60;
 
-#proxy_pass和proxy_cache必须在同级目录下
+            #proxy_pass和proxy_cache必须在同级目录下
             proxy_pass http://$1/$2;
             proxy_cache_key $host$uri$args;
             proxy_cache cache_one;
