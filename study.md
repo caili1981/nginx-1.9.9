@@ -55,10 +55,10 @@
     > 可以自定义命令。  
   - 匹配顺序
     - 正则表达式优先.
-      
-    - 如果没有匹配正则表达式，则用普通表达式.
       - 正则表达式之间配置顺序优先
       - 如果匹配两个正则表达式，则第一个正则表达式生效. 
+    - 如果没有匹配正则表达式，则用普通表达式.
+      - 普通表达式按最长匹配优先.
   - 配置执行顺序
     - create_config
     - command_handler
@@ -152,6 +152,8 @@
   - 负载均衡
     - 加权round_robin
       > [算法链接](https://blog.csdn.net/zhangskd/article/details/50194069) ***非常经典***
+    - least_conn
+      > 最少连接的server优先.
     - ip_hash
       - 算法思路
         - 计算所有ip_server的权重之和.
@@ -253,6 +255,16 @@
           > proxy 模块，create request就是创建/修改相应的http请求.   
           > 例如: 正常http1.1连接的connection时keep-alive的，但是proxy要求，connection需要改成close. 这是rfc的规定.
         - ngx_http_upstream_connect
+          - 设置回调
+            ```
+            c->write->handler = ngx_http_upstream_handler;
+            c->read->handler = ngx_http_upstream_handler;
+
+            u->write_event_handler = ngx_http_upstream_send_request_handler;
+            u->read_event_handler = ngx_http_upstream_process_header;
+            ```
+            > 通过这个回调的设定，下次当有upstream的响应到达时，系统就可以正确的恢复执行.
+            > nginx 
           - ngx_http_upstream_send_request
             - ngx_http_upstream_process_header
    - proxy_cache
