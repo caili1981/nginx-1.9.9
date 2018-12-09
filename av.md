@@ -3,11 +3,13 @@
   - 冲定向
     - 规则
       - 规则1 
-        - 获取post包体的真实地址.
-        - 将post命令转换成get命令.
-        - 在resp里回应下载并过滤之后的文件.
+        http://192.168.101.2/av_scan
+        直接获取post的包体. 
+        或者提供一个页面post body内容.
       - 规则2
-        将http://192.168.101.2/av/www.sohu.com/tag/55770冲定向到server http://www.sohu.com/tag/55770
+        将http://192.168.101.2/av_redirect/www.sohu.com/tag/55770冲定向到server http://www.sohu.com/tag/55770
+        或者将http://192.168.101.2/av_redreict?uri=www.sohu.com/tag/55770重定向.
+        
     - 目的
       > 熟悉url重写.      
   - 病毒扫描
@@ -28,12 +30,17 @@
         > AV server的响应模块以文本方式返回. 
     - av-server之间load-balance
     - yara的实现.
+    - nginx线程池的概念.
+    - 
     
 ### 配置
   - config
     ```
+    upstream backend_av_server {
+      server 127.0.0.1;
+    }
     av_server backend_av_server:
-    location /av {
+    location /av/ {
       proxy_pass http://$url/;
       if ($http_method == "get") {
         av_content resp;
@@ -43,10 +50,5 @@
       if ($http_method == "post") {
         av req;
       }
-    }
-    
-    location /av_download {
-     av on;     #根据请求报文的内容做冲定向.
-     av_msg "Warning: found virus in file<$filename>, size<$http_content_length> time cost:${av_time_cost}s";
     }
     ```
