@@ -263,8 +263,10 @@
             u->write_event_handler = ngx_http_upstream_send_request_handler;
             u->read_event_handler = ngx_http_upstream_process_header;
             ```
-            > 通过这个回调的设定，下次当有upstream的响应到达时，系统就可以正确的恢复执行.
-            > nginx 
+            - 通过这个回调的设定，下次当有upstream的响应到达时，系统就可以正确的恢复执行.
+            - nginx的所有现场恢复都是通过这四个回调函数进行的.
+            - write/read是大的阶段。write_event_handler/read_event_handler是小的阶段.
+            - 注意write_event_handler是upstream的.
           - ngx_http_upstream_send_request
             - ngx_http_upstream_process_header
    - proxy_cache
