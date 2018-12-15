@@ -64,5 +64,9 @@
             proxy_busy_buffers_size 100m;
     ```
   - Vary: Accept-Encoding
-    - 这个字段是用来指示cdn
+    - 这个字段是用来指示cdn缓存服务器，需要存几分拷贝.
+  - content-lenght
+    - chunk模式下可能没有.
+    - 短链接, connection: close 时，可以没有.
+    - 其他情况必须要有.
 
