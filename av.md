@@ -12,8 +12,10 @@
         
     - 目的
       > 熟悉url重写.  
+  - 支持https.
   - 文档压缩.
-    - proxy_pass时，设置不支持文档压缩.
+    - 通过proxy_set_header Accept-encoding identity; 来设置不支持压缩.
+      - 即便这样设置，某些网站仍然传输gzip文件. 如: 腾讯.
   - 病毒扫描
     - 规则
       - 将所有的resp文件全部发送到目的av_server上. 并且以load-balance的形式进行. 
@@ -54,3 +56,13 @@
       }
     }
     ```
+### 项目过程中遇到的问题
+  - body filter中，buffer可以被hold起来，但是只能copy chain,而不能把参数in直接hold.
+  - proxy 在需要较大的缓存时，必须采用如下命令设置较大的buffer, 否则每个链接的默认buffer只有8k，超过8k则不会继续从server下载.
+    ```
+              proxy_buffers 40960 4k;
+            proxy_busy_buffers_size 100m;
+    ```
+  - Vary: Accept-Encoding
+    - 这个字段是用来指示cdn
+
