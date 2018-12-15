@@ -11,7 +11,9 @@
         或者将http://192.168.101.2/av_redreict?uri=www.sohu.com/tag/55770重定向.
         
     - 目的
-      > 熟悉url重写.      
+      > 熟悉url重写.  
+  - 文档压缩.
+    - proxy_pass时，设置不支持文档压缩.
   - 病毒扫描
     - 规则
       - 将所有的resp文件全部发送到目的av_server上. 并且以load-balance的形式进行. 
