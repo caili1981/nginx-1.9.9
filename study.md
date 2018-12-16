@@ -562,3 +562,5 @@
   #14 0x0000000000404458 in main (argc=<optimized out>, argv=<optimized out>) at src/core/nginx.c:359
   (gdb)
   ```
+### 参考文献
+  [Nginx如何解决惊群效应](https://blog.csdn.net/wan_hust/article/details/38958545)
