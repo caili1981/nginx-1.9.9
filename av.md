@@ -79,7 +79,9 @@
       - 如果subrequest在创建的时候设置了NGX_HTTP_SUBREQUEST_IN_MEMORY.
         - 注意upstream_buffer不能设置太小，否则upstream缓存不够.
         - subrequest的header会缓存起来,需要自己在ngx_http_post_subrequest_handler里手动发送.
-        
+        - 默认情况下，subrequest的buffer只有4k，也就是说这个flag只支持缓存4k buffer。所以IN_MEMORY这个flag不支持大请求.
+          > [大请求的处理](http://blog.sina.com.cn/s/blog_7303a1dc0101b9tj.html)
+            
         
   - subrequest似乎只能请求本地链接？
     - 是的. 
