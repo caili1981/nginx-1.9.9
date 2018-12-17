@@ -304,6 +304,9 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
 
     r->main_filter_need_in_memory = 1;
 
+    /*
+     * 将header的content-lengths设置成chunk模式
+     */
     ngx_http_clear_content_length(r);
     ngx_http_clear_accept_ranges(r);
     ngx_http_weak_etag(r);

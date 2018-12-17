@@ -2525,10 +2525,17 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->read_event_handler = ngx_http_request_empty_handler;
     sr->write_event_handler = ngx_http_handler;
 
+    /* 
+     * 如果是postponed第一个元素，则将c->data设置为此sub_request 
+     * 在ngx_http_postpone_filter里会利用它来进行判断是不是第一个sub-request
+     */
     if (c->data == r && r->postponed == NULL) {
         c->data = sr;
     }
 
+    /*
+     * sub-request和主req之间的变量是继承的
+     */
     sr->variables = r->variables;
 
     sr->log_handler = r->log_handler;

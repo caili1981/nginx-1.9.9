@@ -530,6 +530,9 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 #if (NGX_HTTP_CACHE)
 
     if (u->conf->cache) {
+        /*
+         *  如果配置了proxy_cache
+         */
         ngx_int_t  rc;
 
         rc = ngx_http_upstream_cache(r, u);
@@ -776,30 +779,38 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     if (c == NULL) {
 
-        if (!(r->method & u->conf->cache_methods)) {
+        if (!(r->method & u->conf->cache_methods)) { /*cache_methods 默认为GET/HEAD */
             return NGX_DECLINED;
         }
 
+        /* 获得当前配置的cache_zone */
         rc = ngx_http_upstream_cache_get(r, u, &cache);
 
         if (rc != NGX_OK) {
             return rc;
         }
 
+        /* 如果是HEAD命令，将其转换成get命令 */
         if (r->method == NGX_HTTP_HEAD && u->conf->cache_convert_head) {
             u->method = ngx_http_core_get_method;
         }
 
+        /*
+         * 创建一个cache(r->cache), 这个cache下包含一个keys数组
+         */
         if (ngx_http_file_cache_new(r) != NGX_OK) {
             return NGX_ERROR;
         }
 
+        /*
+         * 根据proxy_pass_key 所定义的表达式计算出key的值
+         * 并将key值送入r->cache
+         */
         if (u->create_key(r) != NGX_OK) {
             return NGX_ERROR;
         }
 
         /* TODO: add keys */
-
         ngx_http_file_cache_create_key(r);
 
         if (r->cache->header_start + 256 >= u->conf->buffer_size) {

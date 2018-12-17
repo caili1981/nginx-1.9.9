@@ -63,8 +63,10 @@ typedef struct {
 
 struct ngx_http_cache_s {
     ngx_file_t                       file;
+    /* ??? 为什么一个链接会有多个keys */
     ngx_array_t                      keys;
     uint32_t                         crc32;
+    /* MD5 码 */
     u_char                           key[NGX_HTTP_CACHE_KEY_LEN];
     u_char                           main[NGX_HTTP_CACHE_KEY_LEN];
 

@@ -173,7 +173,12 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     r->header_sent = 1;
 
-    if (r != r->main) {
+    if (r != r->main) { 
+        /* 
+         * 如果当前请求不是主请求，直接返回,
+         * 意味着，如果请求有sub-request, 那么sub-request
+         * 的header是不会回传到client
+         */
         return NGX_OK;
     }
 

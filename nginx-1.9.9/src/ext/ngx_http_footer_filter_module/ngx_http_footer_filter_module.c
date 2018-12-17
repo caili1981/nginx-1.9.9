@@ -141,6 +141,7 @@ ngx_http_footer_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     last = 0;
 
+    /* 检查是不是最后一个buffer已经完成接收*/
     for (cl = in; cl; cl = cl->next) {
         if (cl->buf->last_buf) {
             last = 1;
@@ -148,6 +149,7 @@ ngx_http_footer_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
+    /* 如果最后一个buffer没有完成接收，则跳过此filter */
     if (!last) {
         return ngx_http_next_body_filter(r, in);
     }

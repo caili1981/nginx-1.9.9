@@ -314,6 +314,7 @@ struct ngx_http_upstream_s {
     /* 如果到上游服务器的速度远大于下游客户端，设置buffer = 1, 创建pipe */
     ngx_event_pipe_t                *pipe;
 
+    /* upstream 所对应的新request的buffer */
     ngx_chain_t                     *request_bufs;
 
     ngx_output_chain_ctx_t           output;

@@ -220,6 +220,7 @@ ngx_http_file_cache_create(ngx_http_request_t *r)
 }
 
 
+/* 计算r->cache->key/main 的md5值 */
 void
 ngx_http_file_cache_create_key(ngx_http_request_t *r)
 {

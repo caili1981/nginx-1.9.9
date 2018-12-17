@@ -68,6 +68,9 @@ struct ngx_pool_s {
 };
 
 
+/*
+ * cleanup_file表示需要显示释放的是一个文件
+ */
 typedef struct {
     ngx_fd_t              fd;
     u_char               *name;

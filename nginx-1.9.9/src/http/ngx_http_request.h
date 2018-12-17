@@ -60,7 +60,20 @@
 
 
 /* unused                                  1 */
+/*
+ * 默认子请求的输出是直接返回给客户端的，
+ * 如果不想返回输出，需要设置NGX_HTTP_SUBREQUEST_IN_MEMORY标志。
+ * 注意，不是所有Handler模块都支持此标志，
+ * 比如fastcgi模块不支持，proxy模块支持。
+ * 注意, IN_MEMORY最多只能保存一个buffer的内容，如果需要buffer的内容过多，
+ * 则需要自己保存.
+ */
 #define NGX_HTTP_SUBREQUEST_IN_MEMORY      2
+
+/*
+ * 子请求完成后会设置自己的r->done标志位，
+ * 可以通过判断标志位得知子请求是否完成。
+ */
 #define NGX_HTTP_SUBREQUEST_WAITED         4
 #define NGX_HTTP_LOG_UNSAFE                8
 
@@ -337,6 +350,7 @@ typedef ngx_int_t (*ngx_http_post_subrequest_pt)(ngx_http_request_t *r,
     void *data, ngx_int_t rc);
 
 typedef struct {
+    /* subrequest 完成时的回调函数 */
     ngx_http_post_subrequest_pt       handler;
     void                             *data;
 } ngx_http_post_subrequest_t;
@@ -408,6 +422,10 @@ struct ngx_http_request_s {
 
     /* 保存很多 HTTP 首部信息， 例如content lenght, if modified since 等等*/
     ngx_http_headers_in_t             headers_in;
+
+    /*
+     * ngx_http_header_filter会根据headers_out进行编码，并返回响应信息给客户端
+     */
     ngx_http_headers_out_t            headers_out;
 
     /* ????为什么在http_core_handler时，它的值为0 */
@@ -582,6 +600,11 @@ struct ngx_http_request_s {
     unsigned                          post_action:1;
     unsigned                          request_complete:1;
     unsigned                          request_output:1;
+    /*
+     * 在sub_request的时候，如果parent的header没有发送，那么会将此
+     * sub_request的header发送给parent, header_sent标志是用来表示header
+     * 是否之前已经发过
+     */
     unsigned                          header_sent:1;
     unsigned                          expect_tested:1;
     unsigned                          root_tested:1;

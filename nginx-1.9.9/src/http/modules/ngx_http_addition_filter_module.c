@@ -119,7 +119,16 @@ ngx_http_addition_header_filter(ngx_http_request_t *r)
 
     ngx_http_set_ctx(r, ctx, ngx_http_addition_filter_module);
 
+    /*
+     * 暂时无法计算content-length, 响应报文会以chunk方式发送
+     * 由于header_filter完成之后，http将会把header送入r->out进行发送，
+     * 从流程上看，很多情形下content-length都无法计算出来，只能以chunk方式发送
+     */
     ngx_http_clear_content_length(r);
+
+    /*
+     * 不支持断点续传
+     */
     ngx_http_clear_accept_ranges(r);
     ngx_http_weak_etag(r);
 
@@ -137,6 +146,14 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_addition_ctx_t   *ctx;
     ngx_http_addition_conf_t  *conf;
 
+    /*
+     * 在原始http响应回来时就会进入，不一定会等待所有响应报文都收齐时
+     * 才进入，因此，这个filter可能会进入很多次.
+     * 因此：
+     * 当收到响应报文时就会发送sub-request
+     * 当subrequest已经提交时，应该及早退出，并执行下一个body_filter, 
+     * 以减少对性能的影响.
+     */
     if (in == NULL || r->header_only) {
         return ngx_http_next_body_filter(r, in);
     }
@@ -153,6 +170,9 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->before_body_sent = 1;
 
         if (conf->before_body.len) {
+            /*
+             * 此时的subreq作为r->postponed的第一个元素, ngx_http_subrequest会将r->connection->data置为此subreq
+             */
             if (ngx_http_subrequest(r, &conf->before_body, NULL, &sr, NULL, 0)
                 != NGX_OK)
             {
@@ -176,12 +196,28 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
     }
 
+    /*
+     * Next body filter会历经ngx_http_postpone_filter。
+     * 那里会判断(如下:)此buffer所对应的请求是不是当前的subrequest的第一个请求.
+     *    r->connection->data == r
+     * 如果不是第一个请求，则创建一个新的ponstponed_request并加入到队尾
+     * 此时postedpone有两个元素:
+     *  1. before
+     *  2. self
+     */
     rc = ngx_http_next_body_filter(r, in);
 
+    /* 如果原请求的最后一个报文仍未接收完成, 则不进行下一个sub-request请求 */
     if (rc == NGX_ERROR || !last || conf->after_body.len == 0) {
         return rc;
     }
 
+    /*
+     * 此时postedpone有三个元素:
+     *  1. before
+     *  2. self
+     *  3. after
+     */
     if (ngx_http_subrequest(r, &conf->after_body, NULL, &sr, NULL, 0)
         != NGX_OK)
     {
@@ -192,7 +228,6 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     return ngx_http_send_special(r, NGX_HTTP_LAST);
 }
-
 
 static ngx_int_t
 ngx_http_addition_filter_init(ngx_conf_t *cf)

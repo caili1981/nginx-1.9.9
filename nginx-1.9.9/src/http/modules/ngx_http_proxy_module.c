@@ -1028,6 +1028,11 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
 
 #if (NGX_HTTP_CACHE)
 
+/*
+ * 根据proxy_pass_key所定义的表达式的计算出key的值.
+ * 1.  如果定义proxy_pass_key，则根据其计算key.
+ * 2.  如果没有定义proxy_pass_key, 则将uri送入r->cache->keys.
+ */
 static ngx_int_t
 ngx_http_proxy_create_key(ngx_http_request_t *r)
 {
@@ -1050,6 +1055,7 @@ ngx_http_proxy_create_key(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    /* 如果定义了proxy_cache_key */
     if (plcf->cache_key.value.data) {
 
         if (ngx_http_complex_value(r, &plcf->cache_key, key) != NGX_OK) {
