@@ -14,8 +14,7 @@
       > 熟悉url重写.  
   - 支持https.
   - 文档压缩.
-    - 通过proxy_set_header Accept-encoding identity; 来设置不支持压缩.
-      - 即便这样设置，某些网站仍然传输gzip文件. 如: 腾讯.
+    - 通过proxy_set_header Accept-encoding ""; 来设置不支持压缩.
   - 病毒扫描
     - 规则
       - 将所有的resp文件全部发送到目的av_server上. 并且以load-balance的形式进行. 
@@ -69,4 +68,14 @@
     - chunk模式下可能没有.
     - 短链接, connection: close 时，可以没有.
     - 其他情况必须要有.
+  - 如果有子链接，那么所有链接的charset/Accept-encoding 如果不一致，可能会导致内容读取出现问题.
+    - 这就需要response-header延迟发送.
+      - 一般情况下，如果一个链接有subrequest/upstream, 他们解析完响应就会被立即发送到客户端。 
+        - 发送顺序如下:
+          - 发送header
+          - ngx_http_post_subrequest_t->handler. 
+      - 如果subrequest在创建的时候设置了NGX_HTTP_SUBREQUEST_IN_MEMORY.
+        -  
+  - subrequest似乎只能请求本地链接？
+    - 是的. 
 
