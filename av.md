@@ -73,9 +73,13 @@
       - 一般情况下，如果一个链接有subrequest/upstream, 他们解析完响应就会被立即发送到客户端。 
         - 发送顺序如下:
           - 发送header
+          - header_filter  ===> 将header发送出去.
+          - body_filter.   ===> 将body发送出去. 
           - ngx_http_post_subrequest_t->handler. 
       - 如果subrequest在创建的时候设置了NGX_HTTP_SUBREQUEST_IN_MEMORY.
-        - subrequest的header会缓存起来，需要自己在ngx_http_post_subrequest_handler里手动发送.
+        - 注意upstream_buffer不能设置太小，否则upstream缓存不够.
+        - subrequest的header会缓存起来,需要自己在ngx_http_post_subrequest_handler里手动发送.
+        
         
   - subrequest似乎只能请求本地链接？
     - 是的. 
