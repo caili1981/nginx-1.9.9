@@ -75,7 +75,8 @@
           - 发送header
           - ngx_http_post_subrequest_t->handler. 
       - 如果subrequest在创建的时候设置了NGX_HTTP_SUBREQUEST_IN_MEMORY.
-        -  
+        - subrequest的header会缓存起来，需要自己在ngx_http_post_subrequest_handler里手动发送.
+        
   - subrequest似乎只能请求本地链接？
     - 是的. 
 
