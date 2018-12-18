@@ -66,6 +66,9 @@
     - 这个字段是用来指示cdn缓存服务器，需要存几分拷贝.
   - content-lenght
     - chunk模式下可能没有.
+      - Accept-encoding: 客户端接受的压缩方式. gzip, deflate, identify, "";
+      - transfer-encoding: 服务器发回给客户端的方式, chunk.
+      - content-encoding: 服务器的编码方式gzip.
     - 短链接, connection: close 时，可以没有.
     - 其他情况必须要有.
   - 如果有子链接，那么所有链接的charset/Accept-encoding 如果不一致，可能会导致内容读取出现问题.
@@ -81,6 +84,16 @@
         - subrequest的header会缓存起来,需要自己在ngx_http_post_subrequest_handler里手动发送.
         - 默认情况下，subrequest的buffer只有4k，也就是说这个flag只支持缓存4k buffer。所以IN_MEMORY这个flag不支持大请求.
           > [大请求的处理](http://blog.sina.com.cn/s/blog_7303a1dc0101b9tj.html)
+        - 每一个subrequest都会经过header和body filter。
+          - 在subrequest结束时，感觉last_buf不会被设置？？？
+        - ngx_http_send_special是用来做什么的？
+        - subrequest不会将原header发送给client
+          - ngx_http_header_filter里有如下判断
+            ```
+            if (r->main != r) {
+              return NGX_OK;
+            }
+            ```
             
         
   - subrequest似乎只能请求本地链接？
