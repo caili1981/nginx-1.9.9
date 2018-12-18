@@ -2247,9 +2247,19 @@ ngx_http_post_request(ngx_http_request_t *r, ngx_http_posted_request_t *pr)
     pr->request = r;
     pr->next = NULL;
 
-    for (p = &r->main->posted_requests; *p; p = &(*p)->next) { /* void */ }
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "current posted request list:");
+    for (p = &r->main->posted_requests; *p; p = &(*p)->next) { 
+        ngx_http_request_t *tmp_r = (*p)->request;
+        if (tmp_r != NULL) {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "     http posted request: \"%V?%V\"", &tmp_r->uri, &tmp_r->args);
+        }
+    }
 
     *p = pr;
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "add posted request: \"%V?%V\"\n", &r->uri, &r->args);
 
     return NGX_OK;
 }
@@ -2285,6 +2295,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     }
 
     if (r != r->main && r->post_subrequest) {
+        /*
+         * 如果是subrequest, 调用回调，通知subrequest已经完成
+         */
         rc = r->post_subrequest->handler(r, r->post_subrequest->data, rc);
     }
 
@@ -2331,9 +2344,15 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
-    if (r != r->main) {
+    if (r != r->main) { /* 当前请求不是主请求 */
+        /*
+         * 当前请求有子请求
+         */
 
         if (r->buffered || r->postponed) {
+            /*
+             * 如果当前请求仍然有子请求, 或者未完成的数据
+             */
 
             if (ngx_http_set_write_handler(r) != NGX_OK) {
                 ngx_http_terminate_request(r, 0);
@@ -2341,6 +2360,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
             return;
         }
+
+        /*
+         * 当前子请求不再有子请求
+         */
 
         pr = r->parent;
 
@@ -2367,15 +2390,24 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             r->done = 1;
 
             if (pr->postponed && pr->postponed->request == r) {
+                /*
+                 * 如果父请求子请求不为空，且所指向的请求是当前请求，
+                 * postponed队列后移。
+                 * 后面一个条件非常重要，因为每次next之后，可能已经移
+                 * 到下一个的子请求队列上了.
+                 */
                 pr->postponed = pr->postponed->next;
             }
 
+            /*
+             * ???TODO: 为什么将当前active请求设置为父请求???
+             */
             c->data = pr;
 
         } else {
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                           "http finalize non-active request: \"%V?%V\"",
+                           "http finalize non-active sub-request: \"%V?%V\"",
                            &r->uri, &r->args);
 
             r->write_event_handler = ngx_http_request_finalizer;
@@ -2398,6 +2430,11 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
+    /*
+     *  当前请求是主请求
+     *  等待socket-write事件
+     *  1. 如果有子请求，那么等待write事件，将消息发送远端或者送回client.
+     */
     if (r->buffered || c->buffered || r->postponed || r->blocked) {
 
         if (ngx_http_set_write_handler(r) != NGX_OK) {

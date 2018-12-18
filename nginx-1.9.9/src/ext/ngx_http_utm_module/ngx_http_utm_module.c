@@ -13,6 +13,7 @@ typedef struct {
 } ngx_http_utm_loc_conf_t;
 
 typedef struct {
+    int header_sent;
     int  scaned;
     ngx_file_t  file;
     ngx_chain_t *in;
@@ -103,7 +104,7 @@ ngx_http_utm_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         if (cl->buf->last_buf) {
             last = 1;
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, 
-                           "utm: got last buffer for request: 0x%d\n", (ngx_uint_t)r);  
+                           "utm: got last buffer for request: 0x%p\n", r);  
             break;
         }
     }
@@ -111,7 +112,7 @@ ngx_http_utm_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ctx = ngx_http_get_module_ctx(pr, ngx_http_utm_module);
     if (!ctx || ctx->scaned) {
         /* 如果utm 没有使能，直接进入下一个body filter */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "utm: passed %d\n", (ngx_uint_t)r);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "utm: passed %p\n", r);
         return ngx_http_next_body_filter(r, in);
     }
 
@@ -235,16 +236,14 @@ ngx_http_utm_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 static ngx_int_t 
 ngx_http_utm_subrequest_post_handler(ngx_http_request_t*r, void*data, ngx_int_t rc)
 {
-    ngx_http_request_t        *sr;
+    ngx_http_request_t        *sr, *pr;
     ngx_str_t              uri;
     ngx_http_utm_ctx_t       *ctx;
 
+    pr = r->main;
+    ctx = ngx_http_get_module_ctx(pr, ngx_http_utm_module);
 
-    while (r->parent) {
-        r = r->parent;
-    }
-    ctx = ngx_http_get_module_ctx(r, ngx_http_utm_module);
-
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pr->connection->log, 0, "utm: subrequest %v finished\n", &r->uri);
     if (ctx->scaned == 0) {
         ngx_http_post_subrequest_t *psr;
 
@@ -258,22 +257,35 @@ ngx_http_utm_subrequest_post_handler(ngx_http_request_t*r, void*data, ngx_int_t 
 
         psr->data = NULL;
         psr->handler = ngx_http_utm_subrequest_post_handler;
-        if (ngx_http_subrequest(r, &uri, NULL, &sr, NULL, 0) != NGX_OK) {
+        if (ngx_http_subrequest(r, &uri, NULL, &sr, psr, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "utm: write to file :%d\n", ctx->holding_size);  
-        ngx_write_chain_to_file(&ctx->file, ctx->in, 0, r->pool);
+        if (ctx->in) {  /* 如果域名解析失败, ctx->in 会为空 */
+            ngx_write_chain_to_file(&ctx->file, ctx->in, 0, r->pool); }
         ngx_close_file(ctx->file.fd);
         ctx->scaned = 1;
-        r->headers_out.status = NGX_HTTP_OK;
-        ngx_str_set(&r->headers_out.content_type, "text/html");
-        ngx_http_clear_content_length(r);
-        ngx_http_clear_accept_ranges(r);
-        ngx_http_weak_etag(r);
-        ngx_http_send_header(r);
-        ngx_http_send_special(r, NGX_HTTP_LAST);
-    } 
+        if (ctx->header_sent == 0) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pr->connection->log, 0, "utm: sending header out\n");
+            pr->headers_out.status = NGX_HTTP_OK;
+            ngx_str_set(&pr->headers_out.content_type, "text/html");
+            ngx_http_clear_content_length(pr);
+            ngx_http_clear_accept_ranges(pr);
+            ngx_http_weak_etag(pr);
+            ngx_http_send_header(pr);
+            ctx->header_sent = 1;
+        }
+    } else {
+        /* 
+         * flush/last here is to make the flush point, 
+         * or the write filter will not set the buffer flag, 
+         * as a result, the ngx_http_postpone_filter will not 
+         * continue the ngx_http_next_body_filter. In the last,
+         * the message is not sent out 
+         */
+        ngx_http_send_special(pr, NGX_HTTP_LAST);
+    }
     return NGX_OK;
 }
 

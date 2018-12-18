@@ -2526,7 +2526,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->write_event_handler = ngx_http_handler;
 
     /* 
-     * 如果是postponed第一个元素，则将c->data设置为此sub_request 
+     * 如果当前请求是active_request, 且此subrequest是它的第一个子请求
      * 在ngx_http_postpone_filter里会利用它来进行判断是不是第一个sub-request
      */
     if (c->data == r && r->postponed == NULL) {
@@ -2574,6 +2574,9 @@ ngx_http_subrequest(ngx_http_request_t *r,
 
     *psr = sr;
 
+    /*
+     * 将当前子请求置于待处理队列的队尾
+     */
     return ngx_http_post_request(sr, NULL);
 }
 
