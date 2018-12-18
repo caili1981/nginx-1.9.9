@@ -85,8 +85,10 @@
         - 默认情况下，subrequest的buffer只有4k，也就是说这个flag只支持缓存4k buffer。所以IN_MEMORY这个flag不支持大请求.
           > [大请求的处理](http://blog.sina.com.cn/s/blog_7303a1dc0101b9tj.html)
         - 每一个subrequest都会经过header和body filter。
-          - 在subrequest结束时，感觉last_buf不会被设置？？？
-        - ngx_http_send_special是用来做什么的？
+          - 在subrequest结束时，并不一定会发送last_buf. 所以，判断是否是最后一个buffer需要用到subrequest的post_handler.
+          - 在subrequest里，不能用last_buf == 1来判断，是不是subrequest的最后一个buffer.
+          - ngx_http_send_special是用来做什么的
+            - 用来清空r->out的缓冲区.
         - subrequest不会将原header发送给client
           - ngx_http_header_filter里有如下判断
             ```
