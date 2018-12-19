@@ -100,6 +100,9 @@
                 - ngx_http_process_request_headers
                   - ngx_http_process_request
                     - ngx_http_handler
+                        - 到nginx_http_handler处，一个请求就已经解析出来了.
+                        - subrequest所产生的请求，会同样经过ngx_http_handler处理. 
+                          - 后序找配置，rewrite等都是同样的流程.
                       - ngx_http_core_run_phases
                         - ngx_http_core_content_phase
          
@@ -140,12 +143,13 @@
       - ngx_http_chunked_header_filter
       - ngx_http_header_filter
         > 注意前面有一个ngx_http_headers_filter
+      - ngx_http_write_filter
         > ngx_http_write_filter将报文写出去. 
 
     - body_filter
-      - ngx_http_top_body_filter (ngx_http_output_filter函数内调用)
       - ngx_http_range_body_filter
       - ngx_http_copy_filter
+      - 自定义的filter. 
       - ngx_http_charset_body_filter
       - ngx_http_ssi_body_filter
       - ngx_http_postpone_filter
