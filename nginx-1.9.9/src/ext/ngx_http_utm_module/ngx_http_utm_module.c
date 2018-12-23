@@ -45,7 +45,6 @@ static ngx_command_t ngx_http_utm_commands[] = {
         offsetof(ngx_http_utm_loc_conf_t, cache_path),
         NULL,
     },
-
     { ngx_string("utm_msg"),
         NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
         ngx_http_set_complex_value_slot,
@@ -232,6 +231,8 @@ ngx_http_utm_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
+int
+yara_av_scan(char *file, char **virus_info);
 /*子请求结束时回调该方法*/
 static ngx_int_t 
 ngx_http_utm_subrequest_post_handler(ngx_http_request_t*r, void*data, ngx_int_t rc)
@@ -239,16 +240,43 @@ ngx_http_utm_subrequest_post_handler(ngx_http_request_t*r, void*data, ngx_int_t 
     ngx_http_request_t        *sr, *pr;
     ngx_str_t              uri;
     ngx_http_utm_ctx_t       *ctx;
+    ngx_str_t              virus_info;
+    ngx_http_post_subrequest_t *psr;
 
     pr = r->main;
+
+    if (rc != NGX_HTTP_OK && rc != NGX_OK) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "utm: subrequest %v failed: %d\n", &r->uri, rc);
+        pr->headers_out.status = rc;
+        ngx_str_set(&pr->headers_out.content_type, "text/html");
+        ngx_http_weak_etag(pr);
+        ngx_http_send_header(pr);
+        return rc;
+    }
+
     ctx = ngx_http_get_module_ctx(pr, ngx_http_utm_module);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pr->connection->log, 0, "utm: subrequest %v finished\n", &r->uri);
     if (ctx->scaned == 0) {
-        ngx_http_post_subrequest_t *psr;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "utm: write to file :%d\n", ctx->holding_size);  
+        if (ctx->in) {  /* 如果域名解析失败, ctx->in 会为空 */
+            ngx_write_chain_to_file(&ctx->file, ctx->in, 0, r->pool); 
+        }
+        ngx_close_file(ctx->file.fd);
+        
+        memset(&virus_info, 0, sizeof(ngx_str_t));
+        yara_av_scan((char *)ctx->file.name.data, (char **)&virus_info.data);
 
-        uri.data = (u_char *)"/av_scan_tmp_result";
-        uri.len = strlen((char *)uri.data);
+        ctx->scaned = 1;
+
+        if (virus_info.data == NULL) {
+            uri.data = (u_char *)"/clean";
+            uri.len = strlen((char *)uri.data);
+        } else {
+            uri.data = (u_char *)"/virus_found";
+            uri.len = strlen((char *)uri.data);
+            virus_info.len = strlen((char *)virus_info.data);
+        }
 
         psr = ngx_pcalloc(r->pool, sizeof(ngx_http_post_subrequest_t));
         if (psr == NULL) {
@@ -257,15 +285,16 @@ ngx_http_utm_subrequest_post_handler(ngx_http_request_t*r, void*data, ngx_int_t 
 
         psr->data = NULL;
         psr->handler = ngx_http_utm_subrequest_post_handler;
-        if (ngx_http_subrequest(r, &uri, NULL, &sr, psr, 0) != NGX_OK) {
-            return NGX_ERROR;
+        if (virus_info.data != NULL) {
+            if (ngx_http_subrequest(r, &uri, &virus_info, &sr, psr, 0) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        } else {
+            if (ngx_http_subrequest(r, &uri, NULL, &sr, psr, 0) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "utm: write to file :%d\n", ctx->holding_size);  
-        if (ctx->in) {  /* 如果域名解析失败, ctx->in 会为空 */
-            ngx_write_chain_to_file(&ctx->file, ctx->in, 0, r->pool); }
-        ngx_close_file(ctx->file.fd);
-        ctx->scaned = 1;
         if (ctx->header_sent == 0) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pr->connection->log, 0, "utm: sending header out\n");
             pr->headers_out.status = NGX_HTTP_OK;
@@ -374,9 +403,14 @@ ngx_http_utm(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+int yara_av_init(char *pattern_file);
 static ngx_int_t
 ngx_http_utm_init(ngx_conf_t *cf)
 {
+    if (yara_av_init("/home/jackcai/rule-repo/rules/index.yar.out") != 0) {
+        printf("load yara rule failed\n");
+        return NGX_ERROR;
+    }
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_utm_body_filter;
 
