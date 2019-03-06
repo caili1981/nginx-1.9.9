@@ -7,6 +7,7 @@ int utm_seq;
 
 typedef struct {
     ngx_flag_t enable;
+    ngx_str_t  target_url;
     ngx_http_complex_value_t *cache_path;
     ngx_http_complex_value_t *msg;
     char *magic;
@@ -29,6 +30,85 @@ static ngx_int_t ngx_http_utm_header_filter(ngx_http_request_t *r);
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 static ngx_int_t ngx_http_utm_init(ngx_conf_t *cf);
+
+static ngx_int_t
+ngx_http_utm_get_target_url(ngx_http_request_t *r,
+                                   ngx_http_variable_value_t *v,
+                                   uintptr_t data)
+{
+    ngx_int_t key;
+    ngx_str_t var = ngx_string("arg_url");
+    ngx_str_t orig_url;
+    ngx_http_variable_value_t  *vv;
+    key = ngx_hash(var.data, var.len);
+    ngx_str_t target_url;
+    u_char *orig, *target;
+    vv = ngx_http_get_variable(r->main, &var, key);
+    if (vv == NULL) {
+        return NGX_ERROR;
+    }
+
+    target_url.len = vv->len;
+    target_url.data = vv->data;
+
+    orig_url.data = ngx_pcalloc(r->pool, target_url.len);
+    if (!orig_url.data) {
+        return NGX_ERROR;
+    }
+    orig_url.len = 0;
+    orig = orig_url.data;
+    target = target_url.data;
+    ngx_unescape_uri(&orig_url.data, &target_url.data, target_url.len, NGX_UNESCAPE_URI);
+    target_url.len -= (target_url.data - target);
+    if (target_url.len > 0) {
+        *orig_url.data++ = '?';
+        ngx_unescape_uri(&orig_url.data, &target_url.data, target_url.len, NGX_UNESCAPE_URI);
+    }
+#if 0
+    if (rc != NGX_OK) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, 
+                       "utm: can not decode %v\n", &target_url);
+        return NGX_ERROR;
+    }
+#endif
+    orig_url.data = orig;
+    target_url.data = target;
+    orig_url.len = strlen((char *)orig);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, 
+                   "utm: decode %v to %v\n", &target_url, &orig_url);
+
+    v->len = orig_url.len;
+    v->valid = 1;
+    v->not_found = 0;
+    v->data = orig_url.data;
+    return NGX_OK;
+}
+
+static ngx_http_variable_t  ngx_http_utm_vars[] = {
+
+    { ngx_string("utm_target_url"), NULL, ngx_http_utm_get_target_url, 0,
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
+    { ngx_null_string, NULL, NULL, 0, 0, 0 }
+};
+
+static ngx_int_t
+ngx_http_utm_add_variables(ngx_conf_t *cf)
+{
+    ngx_http_variable_t *var, *v;
+
+    for (v = ngx_http_utm_vars; v->name.len; v++) {
+        var = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (var == NULL) {
+            return NGX_ERROR;
+        }
+
+        var->get_handler = v->get_handler;
+        var->set_handler = v->set_handler;
+        var->data = v->data;
+    }
+
+    return NGX_OK;
+}
 
 static ngx_command_t ngx_http_utm_commands[] = {
     { ngx_string("utm"),
@@ -56,7 +136,7 @@ static ngx_command_t ngx_http_utm_commands[] = {
 };
 
 static ngx_http_module_t ngx_http_utm_module_ctx = {
-    NULL,
+    ngx_http_utm_add_variables,
     ngx_http_utm_init,     
 
     NULL,
@@ -255,6 +335,9 @@ ngx_http_utm_subrequest_post_handler(ngx_http_request_t*r, void*data, ngx_int_t 
     }
 
     ctx = ngx_http_get_module_ctx(pr, ngx_http_utm_module);
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pr->connection->log, 0, "utm: subrequest %v finished\n", &r->uri);
     if (ctx->scaned == 0) {
@@ -298,7 +381,7 @@ ngx_http_utm_subrequest_post_handler(ngx_http_request_t*r, void*data, ngx_int_t 
         if (ctx->header_sent == 0) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pr->connection->log, 0, "utm: sending header out\n");
             pr->headers_out.status = NGX_HTTP_OK;
-            ngx_str_set(&pr->headers_out.content_type, "text/html");
+            ngx_str_set(&pr->headers_out.content_type, "text/html"); /* TODO: set the original content type later */
             ngx_http_clear_content_length(pr);
             ngx_http_clear_accept_ranges(pr);
             ngx_http_weak_etag(pr);
@@ -322,10 +405,12 @@ static ngx_int_t
 ngx_http_utm_handler(ngx_http_request_t *r)
 {
     ngx_http_request_t        *sr;
-    ngx_str_t              uri;
+    ngx_str_t              uri, arg;
     ngx_http_post_subrequest_t *psr;
     ngx_http_utm_ctx_t       *ctx;
     ngx_http_utm_loc_conf_t *lcf;
+    ngx_http_variable_value_t var;
+    ngx_int_t rc;
 
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_utm_ctx_t));
     if (!ctx) {
@@ -377,7 +462,13 @@ ngx_http_utm_handler(ngx_http_request_t *r)
     /* 
      * 在这里不能使用in_memory flag, 因为如果缓存的文件过大，subrequest将会出错
      */
-    if (ngx_http_subrequest(r, &uri, &r->args, &sr, psr, 0 /*NGX_HTTP_SUBREQUEST_IN_MEMORY*/) != NGX_OK) {
+    rc = ngx_http_utm_get_target_url(r, &var, 0);
+    if (rc != NGX_OK || var.not_found == 1 || var.valid != 1) {
+        return NGX_ERROR;
+    }
+    arg.len = var.len;
+    arg.data = var.data;
+    if (ngx_http_subrequest(r, &uri, &arg, &sr, psr, 0 /*NGX_HTTP_SUBREQUEST_IN_MEMORY*/) != NGX_OK) {
         return NGX_ERROR;
     }
     return NGX_OK;

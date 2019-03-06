@@ -1,0 +1,8 @@
+/*ignore this files*/
+nginx-1.9.9/objs/
+*.swp
+*.swo
+nginx-1.9.9/src/cscope.out
+nginx-1.9.9/src/cscope.po.out
+nginx-1.9.9/src/cscope.in.out
+*.o

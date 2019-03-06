@@ -46,8 +46,8 @@ ngx_event_accept(ngx_event_t *ev)
         ev->available = ecf->multi_accept;
     }
 
-    lc = ev->data;
-    ls = lc->listening;
+    lc = ev->data;   /* 每个监听端口也会有一个ngx_connection_t结构 */
+    ls = lc->listening;   
     ev->ready = 0;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
@@ -366,6 +366,13 @@ ngx_event_accept(ngx_event_t *ev)
 ngx_int_t
 ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {
+    /*
+     * 这是结局nginx惊群效应的根本所在函数:
+     * 思路:
+     * 1.  nginx 在每个循环里首先trylock accept metux.
+     * 2.  如果获得mutex，则将listen socket的mutex加入监听队列.
+     * 3.  否则，移除出监听队列.
+     */
     if (ngx_shmtx_trylock(&ngx_accept_mutex)) {
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
