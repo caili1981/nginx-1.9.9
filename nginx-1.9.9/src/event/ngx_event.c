@@ -201,6 +201,10 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
         flags = 0;
 
     } else {
+        /* 
+         * 找到最近的一个timer超时事件，epoll_wait事件时，
+         *  如果fd没有事件到达， 会以此超时事件去进行等待. 从而保证cpu不会不停的100%
+         */
         timer = ngx_event_find_timer();
         flags = NGX_UPDATE_TIME;
 

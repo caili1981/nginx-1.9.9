@@ -56,8 +56,9 @@ struct ngx_event_s {
     unsigned         eof:1;
     unsigned         error:1;
 
-    unsigned         timedout:1;
-    unsigned         timer_set:1;
+    /* 定时器相关操作字段 */
+    unsigned         timedout:1;    /* 事件是否已经超时， ngx_event_expire_timers中设置次标记 */
+    unsigned         timer_set:1;   /* ngx_add_timer, 将一个事件加入到timer-rb-tree中, 并设置这个标记位 */
 
     unsigned         delayed:1;
 

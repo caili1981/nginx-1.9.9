@@ -472,14 +472,29 @@ struct ngx_http_request_s {
     /* 同一个父request 下的所有子请求会通过posntponed链接成一个链表 */
     ngx_http_postponed_request_t     *postponed;
 
-    /* 回调函数, 以及回调函数所需要的数据, 此回调函数在finalize时会调用 */
+    /*
+     * 回调函数, 以及回调函数所需要的数据, 此回调函数在finalize时会调用 
+     * 当前请求数据处理完成之后会调用post_subrequest，通知主请求
+     */
     ngx_http_post_subrequest_t       *post_subrequest;
 
     /* 
      * 已经完成的请求链表，但是仍未发送数据
      * 如果不存放在posted_request里，将再无事件进行驱动 
+     * 添加: ngx_http_subrequest->ngx_http_post_request会往请求的r->main->posted_requests里添加请求
+     * 移除: ngx_http_run_posted_requests.
      */
     ngx_http_posted_request_t        *posted_requests;
+    /*
+     * posted_requests/postponed 个人理解
+     * posted_requests是指已经创建，但是尚未发送的子请求.  (ngx_http_subrequest里调用).
+     * 当发送数据完毕，也就不需要保存.
+     * 只有main request有posted_requests, 因为所有子请求发送出去就好，无需关心先后.
+     * postponed 是指延迟处理的子请求，例如，如有多个子请求，
+     * 第二个子请求先到。那么需要将接收到的数据buffer住。
+     * 只有当接收的数据已经被处理完成(即发送回客户端)才会在postponed移除.
+     * 每个request都有自己的postponed request, 需要保存子请求的隶属关系.
+     */
 
     /* 当前ngx_http_handler时会进入phases engine, phase_handler表明当前处于哪一个phase */
     ngx_int_t                         phase_handler;
