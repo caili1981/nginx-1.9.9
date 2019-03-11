@@ -550,29 +550,29 @@
     }
     ```
   - 外部变量
-    - 用户自己定义的变量
+    - 用户自己定义的变量 
       > set语句所定义的.
     ```
     ```
   - 特殊变量
     - $arg_xxx/$cookie_xxx
-      > 如: $arg_class表示url问号后所代表的参数.
-      > 它其实也是一个变量，在cmcf里占一个位置。它的处理程序就是读取url，并把相应的变量解析出来， 性能不如正常的变量.
+      > 如: $arg_class表示url问号后所代表的参数.  
+      > 它其实也是一个变量，在cmcf里占一个位置。它的处理程序就是读取url，并把相应的变量解析出来， 性能不如正常的变量.  
   - 变量共享
-    > 变量的生命周期，同一个主请求内.
-    > 需要特别注意的是，如果两个location下对同一个变量赋值，而且会出现跳转，或者子请求到另一个location时，变量就会被覆盖。
+    > 变量的生命周期，同一个主请求内.   
+    > 需要特别注意的是，如果两个location下对同一个变量赋值，而且会出现跳转，或者子请求到另一个location时，变量就会被覆盖。  
   - 相应步骤:
-    - 所有可能用到的变量都在preconfiguration里添加到main_conf->variables_keys里.
-    - 读取配置的时候，如果遇到相应的变量，则从main_conf->variables_keys里查找，是否存在.
-      > 脚本 set 所对应的操作，会用到ngx_http_variables_t->set_handler函数，如果这个值将会更改，则需要定义相应的set_handler.
-      > NGX_HTTP_REWRITE_PHASE的回调函数ngx_http_rewrite_handler会触发脚本的执行.  
+    - 所有可能用到的变量都在preconfiguration里添加到main_conf->variables_keys里.  
+    - 读取配置的时候，如果遇到相应的变量，则从main_conf->variables_keys里查找，是否存在.  
+      > 脚本 set 所对应的操作，会用到ngx_http_variables_t->set_handler函数，如果这个值将会更改，则需要定义相应的set_handler.  
+      > NGX_HTTP_REWRITE_PHASE的回调函数ngx_http_rewrite_handler会触发脚本的执行.   
     - 在所需要的阶段赋值, 配置阶段或者连接处理阶段都可以.
   - ngx_http_variables_add_core_vars
   - ngx_http_variables_t
-    > 所有变量，都通过variables进行定义
+    > 所有变量，都通过variables进行定义.  
   - ngx_variables_value_t
   - ngx_http_complex_value
-    > 这个函数可以获得复杂脚本表达式的值. ngx_http_set_complex_value_slot可以进行读取脚本表达式.
+    > 这个函数可以获得复杂脚本表达式的值. ngx_http_set_complex_value_slot可以进行读取脚本表达式.  
   - 执行顺序
     ```
       set $file index1.html;
