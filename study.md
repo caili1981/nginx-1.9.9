@@ -252,6 +252,7 @@
     - wait_request状态.
       - 处理http请求.
       - 调用ngx_http_process_request_line进入http连接处理状态.
+        - ngx_http_create_request 创建http_request请求数据结构.
       
 
     
@@ -278,7 +279,9 @@
     - proxy_pass
     - proxy_redirect
     - proxy_store
+      > 
     - proxy_bind
+      > 将连接upstream的地址绑定为制定地址.
   - upstream的三种处理方式
     - 不转发上游响应.
       - subrequest可能要用到，因为我们需要修改上游响应.
