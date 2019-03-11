@@ -213,7 +213,25 @@
   - nginx在如何将http的流程接上，费了很大的功夫，相关的代码也晦涩难懂.
     - r->connection->read/write->handler会指定当前状态的回调函数，从这个函数进去之后，会继续一个http的后续流程. 
       > 例如ngx_http_request_handler 函数. 
-    
+  - nginx惊群问题
+    - 原因
+      - nginx master process 会创建listening socket.
+      - 多个worker thread会监听listening socket.
+      - 如果多个worker thread同时监听，那么当一个tcp 连接建立时，会唤醒所有的worker process.
+    - 解决方案.
+      - 跨进程mutex.
+        - 每个work thread会尝试取得accept锁.
+        - 如果取得accept锁，则将listen socket的fd加入到读队列. 
+          - 否则，如果此进程上次获得过此锁，则将listen socket的锁移除出读队列.
+        - 通过这种方式，保证每次都只有一个worker-thread监听listen socket.
+    - accept event block问题.
+      - nginx需要处理大量的http流量，从而导致accept事件得不到及时处理.
+      - 解决办法.
+        - 读取事件并不真正的处理，而是将事件存入ngx_posted_events. 这样所有事件能非常快速的执行完
+        - 当所有accept事件处理完成之后，再处理ngx_posted_events.
+        - 如果worker thread并非accept event的获取者，则可以直接在ngx_process_events里直接处理事件.
+        
+  - nginx_event_t   
 
     
 ### HTTP 处理
