@@ -378,6 +378,8 @@
         - 前通配符匹配.
         - 后通配符匹配.
       - server的查找使用的是这种方式.
+      - 参考连接:
+        > https://www.cnblogs.com/0x2D-0x22/p/4139805.html
       
   - nginx 内存池
     - ngx_pool_t
