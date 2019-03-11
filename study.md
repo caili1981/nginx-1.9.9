@@ -231,7 +231,28 @@
         - 当所有accept事件处理完成之后，再处理ngx_posted_events.
         - 如果worker thread并非accept event的获取者，则可以直接在ngx_process_events里直接处理事件.
         
-  - nginx_event_t   
+  - 以事件流程看待整个http处理生命周期.
+    - 准备知识
+      - ngx_event_t 
+        - handler, 每个不同状态的事件都会有相应的handler进行处理.
+        - data，会随着不同的状态传入不同的值. 
+    - init
+      - 初始化状态，将read event的data设置为ngx_listening_t.
+      - ngx_event_t
+        - event_handler = ngx_event_accept
+        - data = ngx_connections_t (不是普通的connection，而是listen socket所对应的connections).
+    - accept
+      - tcp连接成功.
+      - ngx_get_connection 生成一个连接.
+      - 调用ngx_listening_t->handler(ngx_http_init_connection)生成http连接.
+        - ngx_http_init_connection会调用ngx_handle_read_event将rev加入到监听队列中.
+      - ngx_event_t
+        - event_handler = ngx_http_wait_request_handler
+        - data = ngx_connection_t
+    - wait_request状态.
+      - 处理http请求.
+      - 调用ngx_http_process_request_line进入http连接处理状态.
+      
 
     
 ### HTTP 处理
