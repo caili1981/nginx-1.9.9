@@ -54,13 +54,31 @@
     > 每一个关键字都是一个命令, 如http/server/location都有对应的命令. 
     > 可以自定义命令。  
   - 匹配顺序
-    - 普通表达式匹配优先..
+    - 普通表达式匹配优先.
+      - 实例
+        ```
+        location = /a/hello.html {
+            echo "hello equal match";
+        }
+        ```
       - 普通表达式按最长匹配优先.
     - 正则表达式.
+      - 实例
+        ```
+        location ~ /hello(.*)$ {
+            echo "hello reg1";
+        }
+        ```
       - 正则表达式之间配置顺序优先
       - 如果匹配两个正则表达式，则第一个正则表达式生效. 
       
     - 前缀匹配.
+      - 实例
+        ```
+        location /a/b/c/ {
+            echo "/a/b/c/";
+        }
+        ```
     - [参考文档](https://blog.csdn.net/fengmo_q/article/details/6683377)
     
   - 配置执行顺序
