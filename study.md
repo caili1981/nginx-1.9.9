@@ -59,6 +59,10 @@
     - 正则表达式.
       - 正则表达式之间配置顺序优先
       - 如果匹配两个正则表达式，则第一个正则表达式生效. 
+      
+    - 前缀匹配.
+    - [参考文档](https://blog.csdn.net/fengmo_q/article/details/6683377)
+    
   - 配置执行顺序
     - create_config
     - command_handler
