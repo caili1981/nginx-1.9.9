@@ -132,8 +132,7 @@
                         - ngx_http_core_content_phase
 
 ### nginx全局状态图.
-
-  - 以事件流程看待整个http处理生命周期.
+  - 按事件中断划分的状态机。
     - 准备知识
       - ngx_event_t 
         - handler, 每个不同状态的事件都会有相应的handler进行处理.
@@ -152,10 +151,41 @@
         - event_handler = ngx_http_wait_request_handler
         - data = ngx_connection_t
     - wait_request状态.
+      - handler
+        - ngx_http_wait_request_handler
+        - ngx_http_empty_handler
       - 处理http请求.
       - 调用ngx_http_process_request_line进入http连接处理状态.
         - ngx_http_create_request 创建http_request请求数据结构.
-    - request
+    - request line 状态.
+      - handler
+        - ngx_http_process_request_line
+        - ngx_http_empty_handler
+      - 读request header. 
+      - 如果请求头是分片到达，则可能被中断.
+    - request handler 状态.
+      - handler
+        - ngx_http_request_handler
+        - ngx_http_request_handler
+      - 处理报文体. 不同的location会有不同的body处理方式，有丢弃，有转发.
+      - 可能被报文体中断.
+    - upstream 状态. 
+      - handler
+        - ngx_http_upstream_handler
+        - ngx_http_upstream_handler
+      - 处理upstream报文状态。
+      - 可能被upstream的发送和接收中断.
+  - pipe line处理.
+    - nginx upstream并不具备pipe-line的并行处理能力。
+      - 理想模式
+        - 当收到两个连续的request时，立马将两个request同时转发到upstream.
+        - 将收到的response，按先后顺序送回client.
+      - 实际模式.
+        - 当收到两个连续的request时，对第一个req建立一个upstream，发送到server.
+        - 收到server-response，送回client。
+        - 对第二个req再建立一个upstream发送给upstream server. 
+        - 收到server-response，送回client。
+        - 两个连接，两个upstream. 
          
 ### nginx filter模块
   - body filter 和header filter是在产生响应后，并在发回client之前. 
