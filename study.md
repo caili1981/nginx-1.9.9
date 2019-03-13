@@ -465,9 +465,11 @@
       - 默认没有挂载
     - ngx_http_core_rewrite_phase 1 
       - ngx_http_rewrite_handler
+        > server块中的rewrite
     - ngx_http_core_find_config_phase 2
     - ngx_http_core_rewrite_phase 3 
       - ngx_http_rewrite_handler
+        > location块中的rewrite
     - ngx_http_core_post_rewrite_phase 4 
     - ngx_http_core_generic_phase 5
       - ngx_http_limit_req_handler
