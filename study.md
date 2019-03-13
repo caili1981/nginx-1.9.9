@@ -168,7 +168,7 @@
         - ngx_http_request_handler
         - ngx_http_request_handler
           - ngx_http_core_run_phases
-            > 如果被写事件阻塞，那么重新进入core_run_phases. 
+            > 如果被写事件阻塞，那么重新进入core_run_phases. 例如，被access认证中断?
       - 处理报文体. 不同的location会有不同的body处理方式，有丢弃，有转发.
       - 可能被报文体中断.
     - upstream 状态. 
