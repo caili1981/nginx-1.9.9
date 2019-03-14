@@ -164,8 +164,14 @@
       - 读request header. 
       - 如果请求头是分片到达，则可能被中断.
     - request handler 状态.
+      - 中断. 
+        - ngx_http_core_run_phases.
+        - ngx_http_read_client_request_body_handler/discard_body
+        - ngx_http_limit_req_delay
+        - 
       - handler
         - ngx_http_request_handler
+          - r->read_event_handler->ngx_http_read_client_request_body_handler
         - ngx_http_request_handler
           - ngx_http_core_run_phases
             > 如果被写事件阻塞，那么重新进入core_run_phases. 例如，被access认证中断?
