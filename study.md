@@ -239,6 +239,8 @@
       - ngx_http_gzip_body_filter
       - ngx_http_chunked_body_filter
       - ngx_http_write_filter
+    - request body filter.
+      - ngx_http_request_body_save_filter
 
 ### upstream 处理流程
   - 负载均衡
