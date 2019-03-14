@@ -462,6 +462,12 @@
       
 ### nginx phase handler
   - [参考文章](https://blog.csdn.net/liujiyong7/article/details/38817135)
+  - phase是存在main_conf里，意味着，对任何location都生效。
+  - phase最后会被合成一个数组，但这个数组的下标和phase不见的是一样的。一个phase可能对应几个数组元素。
+  - phase handler的返回值非常关键. 
+    - decline 表示继续下一个handler.
+    - ok, 继续下一个phase.
+    - done/again. 表示遇到阻塞,把控制权交由epoll模块，等待下一次调度.
   - phase handler定义了处理报文的几个步骤
   - ngx_http_handler
     - ngx_http_core_generic_phase 0
