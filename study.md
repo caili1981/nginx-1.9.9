@@ -168,7 +168,7 @@
         - ngx_http_core_run_phases.
         - ngx_http_read_client_request_body_handler/discard_body
         - ngx_http_limit_req_delay
-        - 
+        - r->read_event_handler.
       - handler
         - ngx_http_request_handler
           - r->read_event_handler->ngx_http_read_client_request_body_handler
