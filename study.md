@@ -461,6 +461,7 @@
       - memory pool更使用于一个生命周期(如session)内都存在的内存段, objcache更适用于短期使用的. 
       
 ### nginx phase handler
+  - [参考文章](https://blog.csdn.net/liujiyong7/article/details/38817135)
   - phase handler定义了处理报文的几个步骤
   - ngx_http_handler
     - ngx_http_core_generic_phase 0
