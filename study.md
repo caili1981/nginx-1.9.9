@@ -26,6 +26,9 @@
   - nginx-copy filter.
   - nginx应用场景.
     https://docs.nginx.com/nginx/admin-guide/
+  - nginx内存池的申请.
+    - 每个不同的buffer对应不同的内存池？？对应的原则是什么？
+    
 
 ### 主要特性
   - 与apache相比
@@ -54,11 +57,33 @@
     > 每一个关键字都是一个命令, 如http/server/location都有对应的命令. 
     > 可以自定义命令。  
   - 匹配顺序
-    - 正则表达式优先.
+    - 普通表达式匹配优先.
+      - 实例
+        ```
+        location = /a/hello.html {
+            echo "hello equal match";
+        }
+        ```
+      - 普通表达式按最长匹配优先.
+    - 正则表达式.
+      - 实例
+        ```
+        location ~ /hello(.*)$ {
+            echo "hello reg1";
+        }
+        ```
       - 正则表达式之间配置顺序优先
       - 如果匹配两个正则表达式，则第一个正则表达式生效. 
-    - 如果没有匹配正则表达式，则用普通表达式.
-      - 普通表达式按最长匹配优先.
+      
+    - 前缀匹配.
+      - 实例
+        ```
+        location /a/b/c/ {
+            echo "/a/b/c/";
+        }
+        ```
+    - [参考文档](https://blog.csdn.net/fengmo_q/article/details/6683377)
+    
   - 配置执行顺序
     - create_config
     - command_handler
@@ -105,6 +130,70 @@
                           - 后序找配置，rewrite等都是同样的流程.
                       - ngx_http_core_run_phases
                         - ngx_http_core_content_phase
+
+### nginx全局状态图.
+  - 按事件中断划分的状态机。
+    - 准备知识
+      - ngx_event_t 
+        - handler, 每个不同状态的事件都会有相应的handler进行处理.
+        - data，会随着不同的状态传入不同的值. 
+    - init
+      - 初始化状态，将read event的data设置为ngx_listening_t.
+      - ngx_event_t
+        - event_handler = ngx_event_accept
+        - data = ngx_connections_t (不是普通的connection，而是listen socket所对应的connections).
+    - accept
+      - tcp连接成功.
+      - ngx_get_connection 生成一个连接.
+      - 调用ngx_listening_t->handler(ngx_http_init_connection)生成http连接.
+        - ngx_http_init_connection会调用ngx_handle_read_event将rev加入到监听队列中.
+      - ngx_event_t
+        - event_handler = ngx_http_wait_request_handler
+        - data = ngx_connection_t
+    - wait_request状态.
+      - handler
+        - ngx_http_wait_request_handler
+        - ngx_http_empty_handler
+      - 处理http请求.
+      - 调用ngx_http_process_request_line进入http连接处理状态.
+        - ngx_http_create_request 创建http_request请求数据结构.
+    - request line 状态.
+      - handler
+        - ngx_http_process_request_line
+        - ngx_http_empty_handler
+      - 读request header. 
+      - 如果请求头是分片到达，则可能被中断.
+    - request handler 状态.
+      - 中断. 
+        - ngx_http_core_run_phases.
+        - ngx_http_read_client_request_body_handler/discard_body
+        - ngx_http_limit_req_delay
+        - r->read_event_handler.
+      - handler
+        - ngx_http_request_handler
+          - r->read_event_handler->ngx_http_read_client_request_body_handler
+        - ngx_http_request_handler
+          - ngx_http_core_run_phases
+            > 如果被写事件阻塞，那么重新进入core_run_phases. 例如，被access认证中断?
+      - 处理报文体. 不同的location会有不同的body处理方式，有丢弃，有转发.
+      - 可能被报文体中断.
+    - upstream 状态. 
+      - handler
+        - ngx_http_upstream_handler
+        - ngx_http_upstream_handler
+      - 处理upstream报文状态。
+      - 可能被upstream的发送和接收中断.
+  - pipe line处理.
+    - nginx upstream并不具备pipe-line的并行处理能力。
+      - 理想模式
+        - 当收到两个连续的request时，立马将两个request同时转发到upstream.
+        - 将收到的response，按先后顺序送回client.
+      - 实际模式.
+        - 当收到两个连续的request时，对第一个req建立一个upstream，发送到server.
+        - 收到server-response，送回client。
+        - 对第二个req再建立一个upstream发送给upstream server. 
+        - 收到server-response，送回client。
+        - 两个连接，两个upstream. 
          
 ### nginx filter模块
   - body filter 和header filter是在产生响应后，并在发回client之前. 
@@ -156,6 +245,8 @@
       - ngx_http_gzip_body_filter
       - ngx_http_chunked_body_filter
       - ngx_http_write_filter
+    - request body filter.
+      - ngx_http_request_body_save_filter
 
 ### upstream 处理流程
   - 负载均衡
@@ -230,29 +321,7 @@
         - 读取事件并不真正的处理，而是将事件存入ngx_posted_events. 这样所有事件能非常快速的执行完
         - 当所有accept事件处理完成之后，再处理ngx_posted_events.
         - 如果worker thread并非accept event的获取者，则可以直接在ngx_process_events里直接处理事件.
-        
-  - 以事件流程看待整个http处理生命周期.
-    - 准备知识
-      - ngx_event_t 
-        - handler, 每个不同状态的事件都会有相应的handler进行处理.
-        - data，会随着不同的状态传入不同的值. 
-    - init
-      - 初始化状态，将read event的data设置为ngx_listening_t.
-      - ngx_event_t
-        - event_handler = ngx_event_accept
-        - data = ngx_connections_t (不是普通的connection，而是listen socket所对应的connections).
-    - accept
-      - tcp连接成功.
-      - ngx_get_connection 生成一个连接.
-      - 调用ngx_listening_t->handler(ngx_http_init_connection)生成http连接.
-        - ngx_http_init_connection会调用ngx_handle_read_event将rev加入到监听队列中.
-      - ngx_event_t
-        - event_handler = ngx_http_wait_request_handler
-        - data = ngx_connection_t
-    - wait_request状态.
-      - 处理http请求.
-      - 调用ngx_http_process_request_line进入http连接处理状态.
-        - ngx_http_create_request 创建http_request请求数据结构.
+
       
 
     
@@ -400,15 +469,24 @@
       - memory pool更使用于一个生命周期(如session)内都存在的内存段, objcache更适用于短期使用的. 
       
 ### nginx phase handler
+  - [参考文章](https://blog.csdn.net/liujiyong7/article/details/38817135)
+  - phase是存在main_conf里，意味着，对任何location都生效。
+  - phase最后会被合成一个数组，但这个数组的下标和phase不见的是一样的。一个phase可能对应几个数组元素。
+  - phase handler的返回值非常关键. 
+    - decline 表示继续下一个handler.
+    - ok, 继续下一个phase.
+    - done/again. 表示遇到阻塞,把控制权交由epoll模块，等待下一次调度.
   - phase handler定义了处理报文的几个步骤
   - ngx_http_handler
     - ngx_http_core_generic_phase 0
       - 默认没有挂载
     - ngx_http_core_rewrite_phase 1 
       - ngx_http_rewrite_handler
+        > server块中的rewrite
     - ngx_http_core_find_config_phase 2
     - ngx_http_core_rewrite_phase 3 
       - ngx_http_rewrite_handler
+        > location块中的rewrite
     - ngx_http_core_post_rewrite_phase 4 
     - ngx_http_core_generic_phase 5
       - ngx_http_limit_req_handler
