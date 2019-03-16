@@ -23,6 +23,10 @@ typedef ngx_int_t (*ngx_event_pipe_output_filter_pt)(void *data,
 
 
 struct ngx_event_pipe_s {
+    /* 
+     * ngx_peer_connection已经保存到上游服务器的连接， 
+     * 这个连接是什么? 
+     */
     ngx_connection_t  *upstream;
     ngx_connection_t  *downstream;
 

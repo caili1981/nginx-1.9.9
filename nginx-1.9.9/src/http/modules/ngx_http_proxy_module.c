@@ -821,7 +821,7 @@ static ngx_path_init_t  ngx_http_proxy_temp_path = {
     ngx_string(NGX_HTTP_PROXY_TEMP_PATH), { 1, 2, 0 }
 };
 
-
+/* content->handler 进入 */
 static ngx_int_t
 ngx_http_proxy_handler(ngx_http_request_t *r)
 {

@@ -25,6 +25,14 @@ static ngx_int_t ngx_http_request_body_length_filter(ngx_http_request_t *r,
 static ngx_int_t ngx_http_request_body_chunked_filter(ngx_http_request_t *r,
     ngx_chain_t *in);
 
+/*
+ *   调用关系
+ *   - ngx_http_read_client_request_body/ngx_http_read_client_request_body_handler(重入函数)
+ *     - ngx_http_do_read_client_request_body
+ *       - ngx_http_request_body_filter
+ *         - ngx_http_request_body_length_filter
+ *           - ngx_http_top_request_body_filter
+ */
 
 ngx_int_t
 ngx_http_read_client_request_body(ngx_http_request_t *r,
@@ -38,7 +46,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
 
-    r->main->count++;
+    r->main->count++;  /* 说明挂起的事件多了一个 */
 
 #if (NGX_HTTP_V2)
     if (r->stream && r == r->main) {
@@ -84,12 +92,14 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     r->request_body = rb;
 
-    if (r->headers_in.content_length_n < 0 && !r->headers_in.chunked) {
+    /* 没有报文体, 直接返回 */
+    if (r->headers_in.content_length_n < 0 && !r->headers_in.chunked) { 
         r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;
     }
 
+    /* 由于报文头没有长度表示，前一次读取可能会读多了 */
     preread = r->header_in->last - r->header_in->pos;
 
     if (preread) {
@@ -284,7 +294,9 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
     }
 }
 
-
+/*
+ * 读取client request body 
+ */
 static ngx_int_t
 ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 {
@@ -306,8 +318,12 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 
     for ( ;; ) {
         for ( ;; ) {
-            if (rb->buf->last == rb->buf->end) {
+            if (rb->buf->last == rb->buf->end) {  /* 临时 buffer 存满了 */
 
+                /* 
+                 * 临时buf 尚未被处理完 
+                 * pos 代表已经处理的位置. last代表最后的位置，end代表buf的内存截止位
+                 */
                 if (rb->buf->pos != rb->buf->last) {
 
                     /* pass buffer to request body filter chain */
@@ -348,10 +364,12 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
                 }
 
+                /* 临时buf从头开始 */
                 rb->buf->pos = rb->buf->start;
                 rb->buf->last = rb->buf->start;
             }
 
+            /* 计算接收buf的大小 */
             size = rb->buf->end - rb->buf->last;
             rest = rb->rest - (rb->buf->last - rb->buf->pos);
 
@@ -381,7 +399,7 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
             rb->buf->last += n;
             r->request_length += n;
 
-            if (n == rest) {
+            if (n == rest) { /* 接收完成 */
                 /* pass buffer to request body filter chain */
 
                 out.buf = rb->buf;
@@ -562,7 +580,12 @@ ngx_http_write_request_body(ngx_http_request_t *r)
     return NGX_OK;
 }
 
-
+/*
+ *  调用关系:
+ *  - ngx_http_discard_request_body/ngx_http_discarded_request_body_handler
+ *    - ngx_http_read_discarded_request_body
+ *      - ngx_http_discard_request_body_filter
+ */
 ngx_int_t
 ngx_http_discard_request_body(ngx_http_request_t *r)
 {
@@ -954,7 +977,7 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
         size = cl->buf->last - cl->buf->pos;
 
         if ((off_t) size < rb->rest) {
-            cl->buf->pos = cl->buf->last;
+            cl->buf->pos = cl->buf->last;  /* 标记这个 chain 已经使用完毕 */
             rb->rest -= size;
 
         } else {

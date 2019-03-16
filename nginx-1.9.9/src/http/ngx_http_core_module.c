@@ -861,17 +861,17 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     rc = ph->handler(r);
 
-    if (rc == NGX_OK) {
+    if (rc == NGX_OK) {   /* 跳过当前phase, 执行下一个phase */
         r->phase_handler = ph->next;
         return NGX_AGAIN;
     }
 
-    if (rc == NGX_DECLINED) {
+    if (rc == NGX_DECLINED) { /* 继续下一个phase */
         r->phase_handler++;
         return NGX_AGAIN;
     }
 
-    if (rc == NGX_AGAIN || rc == NGX_DONE) {
+    if (rc == NGX_AGAIN || rc == NGX_DONE) { /* 阻塞, 控制权交给epoll模块 */
         return NGX_OK;
     }
 
@@ -893,6 +893,7 @@ ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     rc = ph->handler(r);
 
+    /* NGX_AGAIN 接着调用下一个phases */
     if (rc == NGX_DECLINED) {
         r->phase_handler++;
         return NGX_AGAIN;
@@ -904,7 +905,7 @@ ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     /* NGX_OK, NGX_AGAIN, NGX_ERROR, NGX_HTTP_...  */
 
-    ngx_http_finalize_request(r, rc);
+    gx_http_finalize_request(r, rc);
 
     return NGX_OK;
 }
@@ -1055,7 +1056,7 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
     ngx_int_t                  rc;
     ngx_http_core_loc_conf_t  *clcf;
 
-    if (r != r->main) {
+    if (r != r->main) {   /* 访问控制无需对子请求做检查, 所以此时跳过 */
         r->phase_handler = ph->next;
         return NGX_AGAIN;
     }
@@ -1364,6 +1365,9 @@ ngx_http_core_content_phase(ngx_http_request_t *r,
          * 则content_handler为空, 它会进入content phase handler,
          * 而如果重写了content handler, 则不会进入, 因为content_handler
          * 和phase_handler只有一个能生效. 前者会覆盖后者.
+         */
+        /*
+         * 为了防止其他模块仍在处理写事件，而此模块仍为处理完content，将事件设置为空处理函数
          */
         r->write_event_handler = ngx_http_request_empty_handler;
         ngx_http_finalize_request(r, r->content_handler(r));
@@ -1927,6 +1931,10 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
     out.buf = b;
     out.next = NULL;
 
+    /*
+     * 如果header一次无法完全发送，则会返回NGX_AGAIN, 
+     * 无法发送完的buf存入request->out中
+     */
     rc = ngx_http_send_header(r);
 
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {

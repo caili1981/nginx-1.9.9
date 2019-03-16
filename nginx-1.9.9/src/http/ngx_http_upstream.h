@@ -172,6 +172,7 @@ typedef struct {
     ngx_uint_t                       next_upstream;
     ngx_uint_t                       store_access;
     ngx_uint_t                       next_upstream_tries;
+    /* 1: 上游网速优先，buffer 响应 */
     ngx_flag_t                       buffering;
     ngx_flag_t                       request_buffering;
     ngx_flag_t                       pass_request_headers;
@@ -305,6 +306,10 @@ typedef void (*ngx_http_upstream_handler_pt)(ngx_http_request_t *r,
 
 
 struct ngx_http_upstream_s {
+    /*
+     * 用来恢复upstream的流程, 在ngx_http_upstream_handler中被调用
+     * 1. 当ngx_http_upstream_connect时，不会等待tcp连接的创建，而是直接返回, 通过下面两个函数恢复流程
+     */
     ngx_http_upstream_handler_pt     read_event_handler;
     ngx_http_upstream_handler_pt     write_event_handler;
 
@@ -320,7 +325,7 @@ struct ngx_http_upstream_s {
     ngx_output_chain_ctx_t           output;
     ngx_chain_writer_ctx_t           writer;
 
-    /* upstream 的配置, 在proxy module里， 这是直接从proxy的配置里获得的 */
+    /* upstream 的配置, 在proxy module里， 这是直接从upstream的配置里获得的 */
     ngx_http_upstream_conf_t        *conf;
 #if (NGX_HTTP_CACHE)
     ngx_array_t                     *caches;
@@ -328,6 +333,7 @@ struct ngx_http_upstream_s {
 
     ngx_http_upstream_headers_in_t   headers_in;
 
+    /* upstream 域名解析用 */
     ngx_http_upstream_resolved_t    *resolved;
 
     ngx_buf_t                        from_client;
@@ -341,8 +347,11 @@ struct ngx_http_upstream_s {
     ngx_buf_t                        buffer;
     off_t                            length;
 
+    /* 转发给下游的buf */
     ngx_chain_t                     *out_bufs;
+    /* 当转发上游响应时，上次发送没有发完的buffer */
     ngx_chain_t                     *busy_bufs;
+    /* 转发给下游响应时，已经发送完成的buffer，用于回收 */
     ngx_chain_t                     *free_bufs;
 
     /* 处理包体前的初始化方法 */
@@ -356,8 +365,11 @@ struct ngx_http_upstream_s {
 #endif
     /* 这是最重要的几个回调函数, 在proxy module里就实现了这个 */
     /* upstream 的内容是不变的，所有不需要处理body, 如果需要修改body，就应该用sub request ????? */
+    /* 创建上游请求 */
     ngx_int_t                      (*create_request)(ngx_http_request_t *r);
+    /* 如果和上游服务器连接失败，需要重新发起请求 */
     ngx_int_t                      (*reinit_request)(ngx_http_request_t *r);
+    /* 解析上游请求，是不是可以不需要解析??? */
     ngx_int_t                      (*process_header)(ngx_http_request_t *r);
     void                           (*abort_request)(ngx_http_request_t *r);
     void                           (*finalize_request)(ngx_http_request_t *r,
@@ -381,7 +393,9 @@ struct ngx_http_upstream_s {
 
     ngx_http_cleanup_pt             *cleanup;
 
+    /* 文件缓存路径 */
     unsigned                         store:1;
+    /* 是否启用文件缓存 */
     unsigned                         cacheable:1;
     unsigned                         accel:1;
     unsigned                         ssl:1;
@@ -389,11 +403,14 @@ struct ngx_http_upstream_s {
     unsigned                         cache_status:3;
 #endif
 
+    /* 是否开启更大的文件缓存来缓存来不及发送到下游的响应 */
     unsigned                         buffering:1;
     unsigned                         keepalive:1;
     unsigned                         upgrade:1;
 
+    /* 是否已经把request发送给上游服务器 */
     unsigned                         request_sent:1;
+    /* 是否已经把header 转发给下游服务器 */
     unsigned                         header_sent:1;
 };
 

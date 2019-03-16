@@ -182,6 +182,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    /* HTTP 0.9 是只有一个响应体，没有响应头 */
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
     }

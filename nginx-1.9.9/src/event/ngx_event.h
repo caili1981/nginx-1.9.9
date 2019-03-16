@@ -46,6 +46,10 @@ struct ngx_event_s {
     unsigned         disabled:1;
 
     /* the ready event; in aio mode 0 means that no operation can be posted */
+    /* 
+     * epoll在有读/可写时，将其置为1, 
+     * c->recv(ngx_unix_recv)调用时，如果没有接收到指定长度字符串, 就会将ready置为0 
+     */
     unsigned         ready:1;
 
     unsigned         oneshot:1;

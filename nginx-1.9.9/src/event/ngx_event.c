@@ -265,6 +265,9 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 }
 
 
+/*
+ * 将事件添加到epoll中. 一般与ngx_add_timer一起工作, 以处理事件超时
+ */
 ngx_int_t
 ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
 {
@@ -332,7 +335,9 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
     return NGX_OK;
 }
 
-
+/*
+ * 将写事件添加到epoll中.
+ */
 ngx_int_t
 ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 {
@@ -485,8 +490,11 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
 
     /* cl should be equal to or greater than cache line size */
-
-    cl = 128;
+    /*
+     * 由于变量频繁被访问，每个变量=cache line size, 能够有效减少cache-line的互锁时间 
+     * 从而避免使用A1时，cpu不得不将A2/A3...都锁住.
+     */
+    cl = 128;  
 
     size = cl            /* ngx_accept_mutex */
            + cl          /* ngx_connection_counter */

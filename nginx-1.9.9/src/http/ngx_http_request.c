@@ -190,7 +190,6 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_null_string, 0, NULL }
 };
 
-
 void
 ngx_http_init_connection(ngx_connection_t *c)
 {
@@ -363,6 +362,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     ngx_add_timer(rev, c->listening->post_accept_timeout);
     ngx_reusable_connection(c, 1);
 
+    /* epoll开始监控读事件 */
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         ngx_http_close_connection(c);
         return;
@@ -393,6 +393,36 @@ ngx_http_init_connection(ngx_connection_t *c)
        - 处理http请求.
        - 调用ngx_http_process_request_line进入http连接处理状态.
            - ngx_http_create_request 创建http_request请求数据结构.
+       - ngx_http_wait_request_handler
+         - ngx_http_create_request
+           > 此时connection->data就变成request
+   - process request line
+         - ngx_http_process_request_line
+           - pipeline的处理
+             - 在nginx发送完一个响应时，调用ngx_http_finalize_connection->ngx_http_set_keepalive, 重新将ngx_http_process_request_line挂上read event.
+             - 如果此请求时proxy_pass/upstream, 多个请求会挑选出不同的ip地址作为上游.
+               - 也就是说一个原始请求连接，多个upstream请求连接.
+           - ngx_http_read_request_header
+             > 如果request报文读取不完全可能被中断, 重新进入ngx_http_process_request_line
+           - ngx_http_parse_request_line
+             - ngx_http_process_request_headers
+   - request handler 状态.  
+               - ngx_http_process_request
+                 - 设置connection->read/write回调为ngx_http_request_handler
+                   - 使用r->write_event_handler/r->read_event_handler
+                 - ngx_http_handler
+                   - ngx_http_core_run_phases
+                     - ngx_http_core_content_phase
+                       - ngx_http_proxy_handler
+                         - ngx_http_read_client_request_body
+                           - nginx所有的读写操作只在需要的时候才会去做. 并不是一开始就立即读取.
+                           - 根据后续的动作处理报文的body.
+                           - ngx_http_upstream_init
+                             - ngx_http_upstream_init_request
+   - upstream 状态
+                               - ngx_http_upstream_connect
+                                 > 将connection->read/write->handler设置为 ngx_http_upstream_handler
+                 - ngx_http_run_posted_request
 */
 static void
 ngx_http_wait_request_handler(ngx_event_t *rev)
@@ -458,6 +488,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
             ngx_reusable_connection(c, 1);
         }
 
+        /* 如果返回EAGAIN, 那么将读事件添加到epoll的监控队列中 */
         if (ngx_handle_read_event(rev, 0) != NGX_OK) {
             ngx_http_close_connection(c);
             return;
@@ -513,6 +544,11 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
     ngx_reusable_connection(c, 0);
 
+    /* 
+     * 只所以把它放在这里，而不是ngx_http_init_connection 函数中, 
+     * 是为了应对tcp请求成功，但是却长时间不发送数据的情况.
+     * 这样做能节省内存，防止空连接攻击.
+     */
     c->data = ngx_http_create_request(c);
     if (c->data == NULL) {
         ngx_http_close_connection(c);
@@ -2213,6 +2249,7 @@ ngx_http_request_handler(ngx_event_t *ev)
                    "http run request: \"%V?%V\"", &r->uri, &r->args);
 
     if (ev->write) {
+        /* 写事件优先于读事件，是nginx高性能的一大体现, 从而使得内存能够尽快释放 */
         r->write_event_handler(r);
 
     } else {

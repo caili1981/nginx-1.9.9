@@ -120,10 +120,10 @@ typedef struct {
 typedef enum {
     NGX_HTTP_POST_READ_PHASE = 0,
 
-    NGX_HTTP_SERVER_REWRITE_PHASE,
+    NGX_HTTP_SERVER_REWRITE_PHASE,   /* server块中的rewrite */
 
     NGX_HTTP_FIND_CONFIG_PHASE,
-    NGX_HTTP_REWRITE_PHASE,   /* 脚本的set命令，都是在这个时期完成的, 对应的是ngx_http_rewrite_handler */
+    NGX_HTTP_REWRITE_PHASE,   /* location块中的rewrite */
     NGX_HTTP_POST_REWRITE_PHASE,
 
     NGX_HTTP_PREACCESS_PHASE,

@@ -28,7 +28,7 @@ ngx_spinlock(ngx_atomic_t *lock, ngx_atomic_int_t value, ngx_uint_t spin)
             for (n = 1; n < spin; n <<= 1) {
 
                 for (i = 0; i < n; i++) {
-                    ngx_cpu_pause();
+                    ngx_cpu_pause(); /* 专门的cpu省电指令 */
                 }
 
                 if (*lock == 0 && ngx_atomic_cmp_set(lock, 0, value)) {

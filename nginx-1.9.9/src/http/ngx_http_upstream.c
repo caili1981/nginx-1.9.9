@@ -471,6 +471,18 @@ ngx_http_upstream_create(ngx_http_request_t *r)
     return NGX_OK;
 }
 
+/*
+ * 调用关系:
+ * - ngx_http_upstream_init
+ *   - ngx_http_upstream_init_request
+ *     - ngx_http_upstream_connect (非阻塞的connect, 可以继续后续动作).
+ *       - ngx_event_connect_peer 
+ *           - 设置write_event_handler = ngx_http_upstream_send_request_handler (epoll 重新调度)
+ *           - 设置read_event_handler = ngx_http_upstream_process_header
+ *           - ngx_http_upstream_send_request  (通过write_event_handler恢复流程)
+ *           - ngx_http_upstream_process_header （通过read_event_handler恢复流程)
+ *             - ngx_http_upstream_process_non_buffered_downstream
+ */
 
 void
 ngx_http_upstream_init(ngx_http_request_t *r)
@@ -489,10 +501,12 @@ ngx_http_upstream_init(ngx_http_request_t *r)
     }
 #endif
 
+    /* 将timer移除，否则监听事件会超时 */
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
     }
 
+    /* TODO: 为什么不调用ngx_handle_write_event函数??? */
     if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
 
         if (!c->write->active) {
@@ -573,6 +587,7 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     u->store = u->conf->store;
 
     if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
+        /* 检查客户端是否断开连接 */
         r->read_event_handler = ngx_http_upstream_rd_check_broken_connection;
         r->write_event_handler = ngx_http_upstream_wr_check_broken_connection;
     }
@@ -1145,7 +1160,7 @@ ngx_http_upstream_wr_check_broken_connection(ngx_http_request_t *r)
     ngx_http_upstream_check_broken_connection(r, r->connection->write);
 }
 
-
+/* TODO: read, 客户端连接是否已经断开 */
 static void
 ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ngx_event_t *ev)
@@ -1460,7 +1475,11 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     u->request_sent = 0;
 
-    if (rc == NGX_AGAIN) {
+    if (rc == NGX_AGAIN) {  
+        /* 
+         * 延迟检查连接是否建立成功, 如果没有建立成功，
+         * 将write加入事件监控中 
+         */
         ngx_add_timer(c->write, u->conf->connect_timeout);
         return;
     }
@@ -1802,6 +1821,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
                    "http upstream send request");
 
     if (u->state->connect_time == (ngx_msec_t) -1) {
+        /* 设置上游服务器的连接耗时 */
         u->state->connect_time = ngx_current_msec - u->state->response_time;
     }
 
@@ -1815,6 +1835,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
     rc = ngx_http_upstream_send_request_body(r, u, do_write);
 
     if (rc == NGX_ERROR) {
+        /* 重新挑选一个upstream */
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
         return;
     }
@@ -1825,7 +1846,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
     }
 
     if (rc == NGX_AGAIN) {
-        if (!c->write->ready) {
+        if (!c->write->ready) { /* 上次发送没有全部成功 */
             ngx_add_timer(c->write, u->conf->send_timeout);
 
         } else if (c->write->timer_set) {
@@ -1859,6 +1880,7 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
         c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
     }
 
+    /* 如果发送完，则无需再发送 */
     u->write_event_handler = ngx_http_upstream_dummy_handler;
 
     if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
@@ -1869,7 +1891,8 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     ngx_add_timer(c->read, u->conf->read_timeout);
 
-    if (c->read->ready) {
+    if (c->read->ready) { 
+        /* 如果有上游服务器的读事件*/
         ngx_http_upstream_process_header(r, u);
         return;
     }
@@ -2190,11 +2213,16 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
     }
 
+    /* 如果header处理未完成，则退出 */
     if (ngx_http_upstream_process_headers(r, u) != NGX_OK) {
         return;
     }
 
-    if (!r->subrequest_in_memory) {
+    if (!r->subrequest_in_memory) { 
+        /*
+         * request是subrequest时, 且创建subrequest时没有设置IN_MEMORY标志时，
+         * 才会设置这个标志, 表示不转发响应
+         */
         ngx_http_upstream_send_response(r, u);
         return;
     }
@@ -2690,6 +2718,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
+    /* header已经处理完，发送响应 */
     u->header_sent = 1;
 
     if (u->upgrade) {

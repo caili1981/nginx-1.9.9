@@ -122,7 +122,9 @@ ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
     return chain;
 }
 
-
+/*
+ * 将in chain拷贝到chain的尾部, 只拷贝buf chain，不拷贝内容
+ */
 ngx_int_t
 ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in)
 {
@@ -179,7 +181,10 @@ ngx_chain_get_free_buf(ngx_pool_t *p, ngx_chain_t **free)
     return cl;
 }
 
-
+/*
+ * 将out链挂入busy链尾，并开始从头开始释放busy链，
+ * 直到有一个buf的内存长度仍不为0.
+ */
 void
 ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free, ngx_chain_t **busy,
     ngx_chain_t **out, ngx_buf_tag_t tag)

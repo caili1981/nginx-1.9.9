@@ -35,6 +35,7 @@ typedef void (*ngx_event_save_peer_session_pt)(ngx_peer_connection_t *pc,
 
 
 struct ngx_peer_connection_s {
+    /* 到上游服务器的tcp/socket连接 */
     ngx_connection_t                *connection;
 
     /*
