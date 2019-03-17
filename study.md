@@ -1,3 +1,8 @@
+### 参考书籍
+  - 深入理解nginx
+  - 深入剖析nginx
+  - 淘宝nginx书籍.
+    [参考链接](http://tengine.taobao.org/book/chapter_02.html#id1)
 ### 待学习
   - nginx的配置手册
     > [配置手册](http://shouce.jb51.net/nginx/left.html)
@@ -195,7 +200,7 @@
         - 收到server-response，送回client。
         - 两个连接，两个upstream. 
          
-### nginx filter模块
+### nginx filter
   - body filter 和header filter是在产生响应后，并在发回client之前. 
     - 调用关系
       - ngx_http_static_handler
@@ -247,6 +252,7 @@
       - ngx_http_write_filter
     - request body filter.
       - ngx_http_request_body_save_filter
+    - upstream input filter.
 
 ### upstream 处理流程
   - 负载均衡
