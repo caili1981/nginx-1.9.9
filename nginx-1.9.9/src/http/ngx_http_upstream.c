@@ -482,6 +482,20 @@ ngx_http_upstream_create(ngx_http_request_t *r)
  *           - ngx_http_upstream_send_request  (通过write_event_handler恢复流程)
  *           - ngx_http_upstream_process_header （通过read_event_handler恢复流程)
  *             - ngx_http_upstream_process_non_buffered_downstream
+ *               > 当header处理完时，切不需要buffer，则将write_event_handler设置为它
+ *             - ngx_http_upstream_process_body_in_memory
+ *             - ngx_http_upstream_send_response(不区分报文头和报文体)
+ *               > 只有等报文头处理完，才会进入这个函数
+ * 
+ * - input_filter(data, bytes)
+ *   尚未处理的报文:
+ *     start/end标志内存的起始地址, length表示buffer所剩的长度
+ *   接收报文的处理
+ *     - 从last开始往后覆盖，遇到end，变成start，直到u->length指示空间为0为止
+ *   last指向接收报文将覆盖的位置. bytes, 指示长度
+ *     - 如果不需要缓存报文, 则直接返回. last不动。下次接收报文从last开始保存
+ *     - 如果需要缓存nbytes，则last向后移动nbytes, 那么这nbytes的内容不会被覆盖, 下次接收
+ *       位置从last+nbytes开始,并改变u->length
  */
 
 void
@@ -2650,7 +2664,7 @@ ngx_http_upstream_process_body_in_memory(ngx_http_request_t *r,
 
     for ( ;; ) {
 
-        size = b->end - b->last;
+        size = b->end - b->last; /*计算剩余缓冲区空间*/
 
         if (size == 0) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
@@ -2670,6 +2684,7 @@ ngx_http_upstream_process_body_in_memory(ngx_http_request_t *r,
             return;
         }
 
+        /* response 总长度 */
         u->state->response_length += n;
 
         if (u->input_filter(u->input_filter_ctx, n) == NGX_ERROR) {
@@ -3301,7 +3316,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
     }
 }
 
-
+/* input_filter并不会缓存任何报文，所有的报文都保存在u->buffer里 */
 static void
 ngx_http_upstream_process_non_buffered_downstream(ngx_http_request_t *r)
 {

@@ -345,7 +345,7 @@ struct ngx_http_upstream_s {
      * buffer->last表示存储下次响应报文的开始位置，如果不移动，那么报文将会被覆盖
      */
     ngx_buf_t                        buffer;
-    off_t                            length;
+    off_t                            length; /* buffer所剩的长度*/
 
     /* 转发给下游的buf */
     ngx_chain_t                     *out_bufs;

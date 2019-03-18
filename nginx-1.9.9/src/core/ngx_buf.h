@@ -19,8 +19,15 @@ typedef struct ngx_buf_s  ngx_buf_t;
 
 /* size = 80, 可见ngx_buf_t 的overhead是非常大的 */
 struct ngx_buf_s {
-    u_char          *pos;
-    u_char          *last;
+    /*
+     * 初始化一个buf时.
+     * start = 内存开始的位置
+     * pos = start;
+     * last = start;
+     */
+    u_char          *pos;   /* 数据开始的位置 */
+    /* 数据结束的位置, 或者说可以保存数据的地方，直到last = end */
+    u_char          *last;  
     off_t            file_pos;
     off_t            file_last;
 
@@ -28,7 +35,8 @@ struct ngx_buf_s {
     u_char          *end;           /* end of buffer */
     ngx_buf_tag_t    tag;
     ngx_file_t      *file;
-    ngx_buf_t       *shadow;
+    /* 两个buffer都指向同一块内存，shadow会互相指向对方 */
+    ngx_buf_t       *shadow;    
 
 
     /* the buf's content could be changed */
@@ -48,15 +56,19 @@ struct ngx_buf_s {
      * buffer在文件里, 例如静态页面
      */
     unsigned         in_file:1;
+    /* 强制输出 */
     unsigned         flush:1;
     unsigned         sync:1;
     /*
      * 最后一个buffer
      */
     unsigned         last_buf:1;
+    /*
+     * 此chain的最后一个buffer
+     */
     unsigned         last_in_chain:1;
 
-    unsigned         last_shadow:1;
+    unsigned         last_shadow:1; 
     unsigned         temp_file:1;
 
     /* STUB */ int   num;

@@ -905,7 +905,7 @@ ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     /* NGX_OK, NGX_AGAIN, NGX_ERROR, NGX_HTTP_...  */
 
-    gx_http_finalize_request(r, rc);
+    ngx_http_finalize_request(r, rc);
 
     return NGX_OK;
 }

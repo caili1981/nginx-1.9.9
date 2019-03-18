@@ -54,6 +54,16 @@ ngx_uint_t            ngx_use_accept_mutex;
 ngx_uint_t            ngx_accept_events;
 ngx_uint_t            ngx_accept_mutex_held;
 ngx_msec_t            ngx_accept_mutex_delay;
+/* 这是为了防止nginx某一个work process负载过高时，仍然accept新连接，导致accept失败*/
+/*
+ *  原理如下:
+ *  1.  每次accept完之后都会将ngx_accept_disable设置为:
+ *      总连接数/8 - free_connection_n
+ *  2.  当ngx_accept_disabled > 0 时，不会去尝试accept锁.
+ *      但是会将ngx_accept_disabled --;
+ *  总结: 如果accept时当前连接超过总连接的7/8时，nginx会取消尝试accept.
+ *      但是，并非无限制取消尝试，而是超过多少，等待多少次
+ */
 ngx_int_t             ngx_accept_disabled;
 
 

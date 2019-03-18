@@ -58,7 +58,12 @@ struct ngx_pool_s {
     ngx_pool_data_t       d;
     size_t                max;
     ngx_pool_t           *current;
+    /* 
+     * chain是常用结构, 当释放chain时，会把chain
+     * 放置于p->chain下，以便其他模块能够重复使用
+     */
     ngx_chain_t          *chain;
+    /* 大块内存, 由large链表指示 */
     ngx_pool_large_t     *large;
     /*
      * 连接释放时的callback函数，用来清理模块内部的资源
