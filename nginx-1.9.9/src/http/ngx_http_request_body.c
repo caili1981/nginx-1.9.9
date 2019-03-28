@@ -56,7 +56,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     }
 #endif
 
-    if (r != r->main || r->request_body || r->discard_body) {
+    if (r != r->main || r->request_body || r->discard_body) { 
+        /* request_body 有可能在之前就被读取, 所以，此时就可以直接调用post handler*/
         r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;

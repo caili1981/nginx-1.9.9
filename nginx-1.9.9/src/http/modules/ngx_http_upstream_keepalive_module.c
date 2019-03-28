@@ -9,6 +9,31 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+/*
+ *  keepalive module 架构
+ *  原理: nginx可以通过复用对upstream的连接，从而消耗更少的资源.
+ *  1.   覆盖函数peer.init/get/free
+ *       peer.init = ngx_http_upstream_init_keepalive_peer
+ *       peer.get  = ngx_http_upstream_get_keepalive_peer
+ *       peer.free = ngx_http_upstream_free_keepalive_peer
+ *       这三个函数都会调用original函数, 例如,round_robin等upstream的初始化
+ *       所以不会改变upstream的具体行为.
+ *  
+ *  2.   free/cache of ngx_http_upstream_keepalive_srv_conf_t
+ *       free: 表示没有附上connection的entry.
+ *       cache: 已经有connection附上的，等待被用的entry
+ *
+ *
+ *  3.   init
+ *       创建max_cached个free cache.
+ *  4.   get
+ *       从cache里找一个地址相同的连接，如果找到, 将cache上附着的
+ *       connect取走, 将entry放入free池.
+ *  5.   free连接
+ *       从free里取一个entry, 将connection附着上，并放入cache池.
+ *       如果free池已经为空，则将cache池的最后一个连接关闭，附着新的connection.
+ *       并放入cache池.
+ */
 
 typedef struct {
     ngx_uint_t                         max_cached;
@@ -287,7 +312,8 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     u = kp->upstream;
     c = pc->connection;
 
-    if (state & NGX_PEER_FAILED
+    /* 如果upstream连接错误，则state=NGX_PEER_FAILED*/
+    if (state & NGX_PEER_FAILED  
         || c == NULL
         || c->read->eof
         || c->read->error

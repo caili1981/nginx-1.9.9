@@ -50,6 +50,10 @@ struct ngx_peer_connection_s {
 
     /*
      * 在ip_hash里，使用的是ngx_http_upstream_get_ip_hash_peer
+     * 如果设置了keepalive, 那么get/free会被再次复用.
+     * 具体调用:
+     *    ngx_http_upstream_get_keepalive_peer
+     *      (original_get_peer)ngx_http_upstream_get_ip_hash_peer
      */
     ngx_event_get_peer_pt            get;
     ngx_event_free_peer_pt           free;
@@ -66,6 +70,7 @@ struct ngx_peer_connection_s {
 
     ngx_log_t                       *log;
 
+    /* keepavlie 如果找到可复用的连接，会将cached设置为1 */
     unsigned                         cached:1;
 
                                      /* ngx_connection_log_error_e */

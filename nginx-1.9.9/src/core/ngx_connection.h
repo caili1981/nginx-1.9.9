@@ -188,6 +188,10 @@ struct ngx_connection_s {
 
     ngx_atomic_uint_t   number;
 
+    /* 
+     * 使用keepalive模块时，peer connection会被复用, 
+     * requests表示它被复用的次数
+     */
     ngx_uint_t          requests;
 
     unsigned            buffered:8;
