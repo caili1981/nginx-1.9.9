@@ -170,8 +170,8 @@ ngx_http_utm_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_uint_t             last = 0;
     ngx_http_utm_ctx_t     *ctx;
     ngx_chain_t            *cl;
-    ngx_file_t             file;
     ngx_str_t              uri;
+    ngx_file_t             file;
     ngx_http_request_t        *pr, *sr;
     ngx_uint_t             size = 0;
 

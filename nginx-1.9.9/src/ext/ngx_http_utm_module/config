@@ -1,5 +1,5 @@
 ngx_addon_name=ngx_http_utm_module
-ngx_feature_libs="-lyara"
+NGX_LD_OPT="-lyara $NGX_LD_OPT"
+echo "ngx_ld_opt = $NGX_LD_OPT"
 HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES ngx_http_utm_module"
-NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_http_utm_module.c"
-NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/yara.c"
+NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/src/ngx_http_utm_module.c $ngx_addon_dir/src/yara.c"
